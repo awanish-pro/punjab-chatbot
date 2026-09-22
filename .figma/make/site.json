@@ -1,0 +1,11 @@
+{
+  "title": "Bharat chatbot",
+  "description": "Bharat chatbot powered by AIRAWAT RESEARCH FOUNDATION",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
