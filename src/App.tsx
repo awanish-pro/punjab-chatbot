@@ -531,6 +531,7 @@ export default function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const isVoiceQueryTriggeredRef = useRef(false);
+  const isVoiceCancelledRef = useRef(false);
 
   // Platform detection for keyboard shortcuts (Windows vs Mac)
   const isMac = useMemo(
@@ -1629,6 +1630,9 @@ export default function App() {
         }
       }
       setIsListening(false);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
       return;
     }
 
@@ -1646,7 +1650,8 @@ export default function App() {
       recognition.maxAlternatives = 1;
 
       let recognizedFinal = "";
-      isVoiceQueryTriggeredRef.current = false;
+      isVoiceCancelledRef.current = false;
+      setInput("");
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -1654,6 +1659,7 @@ export default function App() {
       };
 
       recognition.onresult = (event: any) => {
+        if (isVoiceCancelledRef.current) return;
         let interimText = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const chunk = event.results[i][0].transcript;
@@ -1672,6 +1678,10 @@ export default function App() {
       recognition.onerror = (event: any) => {
         setIsListening(false);
         recognitionRef.current = null;
+        if (isVoiceCancelledRef.current) {
+          isVoiceCancelledRef.current = false;
+          return;
+        }
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           setSpeechError(cardLabels.micPermissionDenied);
         } else if (event.error !== "no-speech") {
@@ -1683,12 +1693,18 @@ export default function App() {
       recognition.onend = () => {
         setIsListening(false);
         recognitionRef.current = null;
-        const spokenQuery = (recognizedFinal || input).trim();
-        if (spokenQuery && !isVoiceQueryTriggeredRef.current) {
-          isVoiceQueryTriggeredRef.current = true;
-          handleSend(spokenQuery);
-          setInput("");
+        if (isVoiceCancelledRef.current) {
+          isVoiceCancelledRef.current = false;
+          return;
         }
+        const spokenQuery = (recognizedFinal || input).trim();
+        if (spokenQuery) {
+          setInput(spokenQuery);
+        }
+        // Do not auto-send: keep transcribed message in message box for the user to review and send
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 100);
       };
 
       recognition.start();
@@ -1700,6 +1716,24 @@ export default function App() {
       setTimeout(() => setSpeechError(""), 3500);
     }
   }
+
+  // Cancel voice recording and discard recognized speech
+  const handleCancelVoiceInput = () => {
+    isVoiceCancelledRef.current = true;
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setInput("");
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  };
 
   // Handle keyboard shortcuts in message input (Shift+Enter or Alt+Enter to jump to second line; Enter to send)
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2829,12 +2863,26 @@ export default function App() {
                       </p>
                     )}
 
-                    {/* Horizontal Line Wavelength Bar matching ChatGPT */}
+                    {/* Horizontal Line Wavelength Bar with Cross on Left and Pause on Right */}
                     <div className="flex items-center justify-between gap-3 w-full">
+                      {/* Left: Cancel recording button (cross icon matching pause button style) */}
+                      <button
+                        type="button"
+                        onClick={handleCancelVoiceInput}
+                        className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] active:scale-95 border border-[#e5e7eb] text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs flex-shrink-0"
+                        title="Cancel recording"
+                        aria-label="Cancel recording"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+
                       <div className="flex-1 flex items-center h-8 overflow-hidden relative select-none">
                         {/* Left dotted baseline track */}
                         <div className="flex-1 flex items-center justify-evenly gap-[4px] opacity-75 overflow-hidden pr-1">
-                          {Array.from({ length: 44 }).map((_, i) => (
+                          {Array.from({ length: 36 }).map((_, i) => (
                             <span
                               key={`dot-${i}`}
                               className="w-[2.5px] h-[2.5px] rounded-full bg-slate-300 flex-shrink-0"
@@ -2881,7 +2929,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Pause button in place of mic */}
+                      {/* Right: Pause button in place of mic */}
                       <button
                         type="button"
                         onClick={handleVoiceInput}
