@@ -10,6 +10,7 @@ import {
   type IdentifiedRecordPreview,
 } from "./services/msevaService";
 import { languageService, type SupportedLanguage } from "./services/languageService";
+import { generatePaymentReceiptPdf } from "./services/receiptPdfService";
 
 // BotFace: inline SVG with CSS-animated blinking eyes, centered within precise bounding box
 function BotFace({
@@ -1761,63 +1762,9 @@ export default function App() {
     e.target.value = "";
   }
 
-  // Option to download payment receipt (Point 3)
+  // Option to download payment receipt (Point 3) - generates official PDF receipt
   function handleDownloadReceipt(transaction: PaymentTransaction, bill?: ConsolidatedBill, property?: PropertyRecord) {
-    const ownerList =
-      property?.owners && property.owners.length > 0
-        ? property.owners.map((o, idx) => `${idx + 1}. ${o.name}`).join("\n")
-        : citizen?.name
-        ? `1. ${citizen.name}`
-        : "1. Mr. Akash Kumar\n2. Mrs. Sunita Kumar";
-
-    const mobile = property?.owners?.[0]?.mobileNumber || citizen?.mobileNumber || "9123456789";
-    const address = property?.address?.doorNo
-      ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Civil Lines"}, ${property.address.city || "Kanpur Nagar"} - ${property.address.pincode || "208001"}`
-      : "21, Civil Lines, Kanpur Nagar - 208001";
-
-    const receiptText = `================================================================================
-                    GOVERNMENT OF PUNJAB / UPYOG
-                MUNICIPAL CORPORATION CITIZEN SERVICES
-                       OFFICIAL PAYMENT RECEIPT
-================================================================================
-Receipt Number:       ${transaction.receiptNumber || "PB_RCPT_2026_98234"}
-Transaction ID:       ${transaction.txnId}
-Transaction Status:   ${transaction.txnStatus} (SUCCESSFUL)
-Payment Date & Time:  ${transaction.paymentDate || new Date().toLocaleDateString("en-IN")}
-Payment Gateway:      ${transaction.gateway} Gateway (Portal Redirection)
-Payment Channel:      Online Citizen Portal Payment Gateway
---------------------------------------------------------------------------------
-PROPERTY & CITIZEN DETAILS:
-Property ID (PTID):   ${transaction.consumerCode}
-Mobile Number:        ${mobile}
-Owner Name(s):
-${ownerList}
-Property Address:     ${address}
-Financial Year:       2025-2026
---------------------------------------------------------------------------------
-DEMAND & ASSESSMENT BREAKDOWN:
-Current Demand:       ₹${(bill?.currentTaxDemand || 4500).toFixed(2)}
-Previous Arrears:     ₹${(bill?.arrears || 800).toFixed(2)}
-Late Fee / Penalty:   ₹${(bill?.penalty || 200).toFixed(2)}
-Fire Cess & Charges:  ₹${(bill?.fireCess || 100).toFixed(2)}
---------------------------------------------------------------------------------
-TOTAL AMOUNT PAID:    ₹${transaction.txnAmount.toFixed(2)}
---------------------------------------------------------------------------------
-Status: COMPLETED / PAID IN FULL
-
-POST-PAYMENT NOTIFICATION:
-You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.
-================================================================================
-This is a computer-generated official receipt issued by the Municipal Corporation.
-================================================================================`;
-
-    const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Payment-Receipt-${transaction.receiptNumber || transaction.txnId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    generatePaymentReceiptPdf(transaction, bill, property, citizen);
   }
 
   // Use Case 2: Citizen Confirms UID Linking ("Yes")
