@@ -528,6 +528,51 @@ export default function App() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const isVoiceQueryTriggeredRef = useRef(false);
+
+  // Platform detection for keyboard shortcuts (Windows vs Mac)
+  const isMac = useMemo(
+    () => typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+    []
+  );
+  const shortcutKeyLabel = isMac ? "⌘↵" : "Ctrl+↵";
+
+  // Auto-resize textarea dynamically as user types
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const targetHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 26), 110);
+      textareaRef.current.style.height = `${targetHeight}px`;
+    }
+  }, [input]);
+
+  // Global Keyboard Shortcuts for payment CTA ("Pay and proceed", "Make payment")
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const isPayShortcut = (e.ctrlKey || e.metaKey) && e.key === "Enter";
+      const isAltP = e.altKey && (e.key === "p" || e.key === "P");
+
+      if (isPayShortcut || isAltP) {
+        const latestPaymentMsg = [...messages].reverse().find(
+          (m) =>
+            (m.card?.type === "payment_modal" ||
+              m.card?.type === "bill_dues" ||
+              m.card?.type === "payment_failed") &&
+            m.card?.bill
+        );
+
+        if (latestPaymentMsg?.card?.bill && !isPaying) {
+          e.preventDefault();
+          handleInitiatePayment(latestPaymentMsg.card.bill, latestPaymentMsg.card.property);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [messages, isPaying]);
 
   // Network connectivity status tracking
   useEffect(() => {
@@ -1447,6 +1492,9 @@ export default function App() {
     const userMsg: Message = { id: msgId++, role: "user", text, time: now() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     processUserMessage(text);
   }
 
@@ -1551,7 +1599,7 @@ export default function App() {
     }
   }
 
-  // Real Web Speech API & Microphone Handling with Permission Checks
+  // Real Web Speech API & Microphone Handling: capture voice and submit query automatically
   function handleVoiceInput() {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1563,20 +1611,32 @@ export default function App() {
     }
 
     if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
       setIsListening(false);
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.lang =
         conversationLanguage === "hindi"
           ? "hi-IN"
           : conversationLanguage === "punjabi"
           ? "pa-IN"
           : "en-IN";
-      recognition.interimResults = false;
+      recognition.interimResults = true;
+      recognition.continuous = false;
       recognition.maxAlternatives = 1;
+
+      let recognizedFinal = "";
+      isVoiceQueryTriggeredRef.current = false;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -1584,18 +1644,27 @@ export default function App() {
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0]?.[0]?.transcript;
-        if (transcript) {
-          setInput(transcript);
+        let interimText = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const chunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            recognizedFinal += (recognizedFinal ? " " : "") + chunk;
+          } else {
+            interimText += chunk;
+          }
         }
-        setIsListening(false);
+        const liveQuery = (recognizedFinal + " " + interimText).trim();
+        if (liveQuery) {
+          setInput(liveQuery);
+        }
       };
 
       recognition.onerror = (event: any) => {
         setIsListening(false);
+        recognitionRef.current = null;
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           setSpeechError(cardLabels.micPermissionDenied);
-        } else {
+        } else if (event.error !== "no-speech") {
           setSpeechError(`Voice input: ${event.error}`);
         }
         setTimeout(() => setSpeechError(""), 4000);
@@ -1603,16 +1672,66 @@ export default function App() {
 
       recognition.onend = () => {
         setIsListening(false);
+        recognitionRef.current = null;
+        const spokenQuery = (recognizedFinal || input).trim();
+        if (spokenQuery && !isVoiceQueryTriggeredRef.current) {
+          isVoiceQueryTriggeredRef.current = true;
+          handleSend(spokenQuery);
+          setInput("");
+        }
       };
 
       recognition.start();
     } catch (e) {
       console.warn("Speech recognition error:", e);
       setIsListening(false);
+      recognitionRef.current = null;
       setSpeechError(cardLabels.micNotSupported);
       setTimeout(() => setSpeechError(""), 3500);
     }
   }
+
+  // Handle keyboard shortcuts in message input (Shift+Enter or Alt+Enter to jump to second line; Enter to send)
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter") {
+      // Jump to 2nd line shortcut on Windows and Mac (Shift+Enter, Alt+Enter, Option+Return)
+      if (e.shiftKey || e.altKey) {
+        if (e.altKey && !e.shiftKey) {
+          e.preventDefault();
+          const target = e.currentTarget;
+          const start = target.selectionStart;
+          const end = target.selectionEnd;
+          const val = target.value;
+          const updated = val.substring(0, start) + "\n" + val.substring(end);
+          setInput(updated);
+          requestAnimationFrame(() => {
+            target.selectionStart = target.selectionEnd = start + 1;
+          });
+        }
+        return; // Allow Shift+Enter standard newline behavior
+      }
+
+      // If payment card is visible and user pressed Ctrl+Enter / Cmd+Enter, let global payment shortcut handle it
+      const hasPaymentCard = messages.some(
+        (m) =>
+          (m.card?.type === "payment_modal" ||
+            m.card?.type === "bill_dues" ||
+            m.card?.type === "payment_failed") &&
+          m.card?.bill
+      );
+      if ((e.ctrlKey || e.metaKey) && hasPaymentCard) {
+        return;
+      }
+
+      // Regular Enter: send message
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        if (input.trim() && !typing && isOnline) {
+          handleSend(input.trim());
+        }
+      }
+    }
+  };
 
   // File Upload Security & Size Constraints (Max 5MB)
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2293,12 +2412,31 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
 
                       {/* Property Tax / Water Demand Bill Receipt Card (Step 6) */}
                       {msg.card?.type === "bill_dues" && (
-                        <BillReceiptCard
-                          bill={msg.card.bill}
-                          property={msg.card.property}
-                          water={msg.card.water}
-                          citizen={citizen}
-                        />
+                        <div className="flex flex-col gap-2">
+                          <BillReceiptCard
+                            bill={msg.card.bill}
+                            property={msg.card.property}
+                            water={msg.card.water}
+                            citizen={citizen}
+                          />
+                          {msg.card.bill && (
+                            <button
+                              type="button"
+                              disabled={isPaying}
+                              onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
+                              style={{ fontWeight: 500 }}
+                              title={`Make Payment (${shortcutKeyLabel} or Alt+P)`}
+                              className="w-full max-w-[325px] py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                            >
+                              <span className="font-medium" style={{ fontWeight: 500 }}>
+                                {cardLabels.payAndProceed || "Pay & Proceed"} • ₹{Math.round(msg.card.bill.totalAmount).toLocaleString("en-IN")}
+                              </span>
+                              <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9.5px] bg-white/20 border border-white/30 rounded font-mono font-medium tracking-tight">
+                                {shortcutKeyLabel}
+                              </kbd>
+                            </button>
+                          )}
+                        </div>
                       )}
 
                       {/* Payment Options Card (Step 7) */}
@@ -2329,6 +2467,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                             disabled={isPaying}
                             onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
                             style={{ fontWeight: 500 }}
+                            title={`Make payment via ${selectedGateway} (${shortcutKeyLabel} or Alt+P)`}
                             className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
                           >
                             {isPaying ? (
@@ -2340,7 +2479,12 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                                 <span>Redirecting to Payment Gateway...</span>
                               </span>
                             ) : (
-                              <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.payNow} ({selectedGateway})</span>
+                              <span className="flex items-center justify-center gap-2 font-medium" style={{ fontWeight: 500 }}>
+                                <span>{cardLabels.payAndProceed || cardLabels.makePayment || "Pay & Proceed"} ({selectedGateway})</span>
+                                <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9.5px] bg-white/20 border border-white/30 rounded font-mono font-medium tracking-tight">
+                                  {shortcutKeyLabel}
+                                </kbd>
+                              </span>
                             )}
                           </button>
                         </div>
@@ -2444,9 +2588,13 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                             type="button"
                             onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card?.property)}
                             style={{ fontWeight: 500 }}
-                            className="w-full mt-1 py-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            title={`Retry Payment (${shortcutKeyLabel})`}
+                            className="w-full mt-1 py-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                           >
                             <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.retryPayment}</span>
+                            <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9.5px] bg-white/20 border border-white/30 rounded font-mono font-medium tracking-tight">
+                              {shortcutKeyLabel}
+                            </kbd>
                           </button>
                         </div>
                       )}
@@ -2591,8 +2739,8 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                   </div>
                 ) : (
                   <div key={msg.id} className="max-w-[85%] self-end flex flex-col items-end">
-                    <div className="bg-[#e5e7eb] text-[#1f2937] text-[13.5px] font-normal px-4.5 py-2 rounded-full shadow-none break-words">
-                      <p className="leading-snug">{msg.text}</p>
+                    <div className="bg-[#e5e7eb] text-[#1f2937] text-[13.5px] font-normal px-4 py-2 rounded-2xl rounded-tr-sm shadow-none break-words">
+                      <p className="leading-snug whitespace-pre-wrap">{msg.text}</p>
                     </div>
                     <p className="text-[10.5px] text-slate-400 mt-1 pr-1.5">{msg.time}</p>
                   </div>
@@ -2637,63 +2785,86 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
               )}
 
               {/* Bottom Message Box matching Screenshot */}
-              <div className="w-full bg-white rounded-[18px] border border-slate-200 shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-3.5 flex flex-col justify-between transition-all focus-within:border-blue-500/80 focus-within:ring-1 focus-within:ring-blue-500/30">
-                {/* Input Text Field */}
-                <input
-                  type="text"
+              <div className="w-full bg-white rounded-[18px] border border-slate-200 shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-3 flex flex-col justify-between transition-all focus-within:border-blue-500/80 focus-within:ring-1 focus-within:ring-blue-500/30">
+                {/* Listening Alert / Indicator */}
+                {isListening && (
+                  <div className="flex items-center justify-between bg-rose-50 border border-rose-200/80 text-rose-700 px-3 py-1.5 rounded-xl text-xs mb-2 animate-pulse">
+                    <span className="flex items-center gap-1.5 font-medium text-[11.5px]">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block" />
+                      {cardLabels.micListeningPrompt || "Listening... Speak your query now"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (recognitionRef.current) recognitionRef.current.stop();
+                      }}
+                      className="text-[11px] font-semibold text-rose-800 underline cursor-pointer"
+                    >
+                      Done / Ask
+                    </button>
+                  </div>
+                )}
+
+                {/* Multiline Textarea: Shift+Enter or Alt+Enter/Option+Enter for 2nd line */}
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
                   value={input}
                   disabled={!isOnline}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && input.trim() && !typing && isOnline) {
-                      handleSend(input.trim());
-                    }
-                  }}
+                  onKeyDown={handleTextareaKeyDown}
                   placeholder={
                     !isOnline
                       ? "Offline - waiting for network connection..."
                       : isListening
-                      ? "Listening... please speak now"
+                      ? "Listening... please speak your query"
                       : languageService.getInputPlaceholder(conversationLanguage)
                   }
-                  className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent mb-3 disabled:placeholder:text-amber-600/70"
+                  className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent resize-none leading-relaxed overflow-y-auto max-h-[110px] disabled:placeholder:text-amber-600/70"
                 />
 
                 {/* Bottom Action Toolbar inside the Box */}
-                <div className="flex items-center justify-between pt-1">
-                  {/* Left: Camera icon */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded hover:bg-slate-50"
-                    title="Attach document or photo (Max 5MB)"
-                    aria-label="Camera"
-                  >
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                      <circle cx="12" cy="13" r="3" />
-                    </svg>
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*,.pdf"
-                    onChange={handleFileUpload}
-                  />
+                <div className="flex items-center justify-between pt-1.5">
+                  {/* Left: Camera icon + subtle shortcut hint */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded hover:bg-slate-50"
+                      title="Attach document or photo (Max 5MB)"
+                      aria-label="Camera"
+                    >
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                        <circle cx="12" cy="13" r="3" />
+                      </svg>
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*,.pdf"
+                      onChange={handleFileUpload}
+                    />
+                    <span className="text-[10.5px] text-slate-400 select-none hidden sm:inline" title="Shift + Enter to jump to second line">
+                      Shift+Enter ↵
+                    </span>
+                  </div>
 
                   {/* Right: Microphone + Send Button */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handleVoiceInput}
-                      className={`p-1 transition-colors cursor-pointer rounded hover:bg-slate-50 ${
-                        isListening ? "text-rose-500 animate-pulse bg-rose-50" : "text-slate-400 hover:text-slate-600"
+                      className={`p-1.5 transition-all cursor-pointer rounded-full ${
+                        isListening
+                          ? "bg-rose-500 text-white shadow-md shadow-rose-500/40 animate-pulse ring-2 ring-rose-300"
+                          : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                       }`}
-                      title={isListening ? "Listening... Tap to stop" : "Voice input"}
+                      title={isListening ? "Listening... Tap to finish and ask" : "Ask query by voice (Microphone)"}
                       aria-label="Microphone"
                     >
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                         <line x1="12" x2="12" y1="19" y2="22" />
@@ -2709,7 +2880,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                           ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer active:scale-95"
                           : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                       }`}
-                      title={input.trim() ? "Send message" : "Type a message to send"}
+                      title={input.trim() ? "Send message (Enter)" : "Type a message to send"}
                       aria-label="Send message"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-0.5px] translate-y-[0.5px]">
