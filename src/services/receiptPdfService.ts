@@ -17,12 +17,12 @@ export function generatePaymentReceiptPdf(
   const margin = 16;
   const contentWidth = pageWidth - margin * 2; // 178mm
 
-  // Determine Punjab vs Kanpur context
-  const displayId = property?.propertyId || bill?.consumerCode || transaction.consumerCode || "PB-PT-123-456-78";
-  const isPunjab = displayId.includes("PB-PT") || property?.address?.city?.toLowerCase().includes("amritsar");
-  const cityName = property?.address?.city || (isPunjab ? "Amritsar" : "Kanpur");
-  const stateName = isPunjab ? "Punjab" : "Uttar Pradesh";
-  const corpTitle = `MUNICIPAL CORPORATION ${cityName.toUpperCase()}, ${stateName.toUpperCase()}`;
+  // Punjab Context & PSPCL Branding
+  const rawId = property?.propertyId || bill?.consumerCode || transaction.consumerCode || "PJB-123-456-78";
+  const displayId = rawId.replace(/^KNP/i, "PJB");
+  const cityName = property?.address?.city || "Amritsar";
+  const stateName = "Punjab";
+  const corpTitle = "PUNJAB STATE POWER CORPORATION LIMITED (PSPCL)";
 
   // 1. Top Decorative Brand Bar
   doc.setFillColor(37, 99, 235); // #2563eb
@@ -126,17 +126,13 @@ export function generatePaymentReceiptPdf(
     ? property.owners.map((o, idx) => `${idx + 1}. ${o.name}`).join(", ")
     : citizen?.name
     ? citizen.name
-    : isPunjab
-    ? "Mr. Gurpreet Singh, Mrs. Harpreet Kaur"
-    : "Mr. Akash Kumar, Mrs. Sunita Kumar";
+    : "Mr. Gurpreet Singh, Mrs. Harpreet Kaur";
 
-  const mobile = property?.owners?.[0]?.mobileNumber || citizen?.mobileNumber || (isPunjab ? "9876543210" : "9123456789");
+  const mobile = property?.owners?.[0]?.mobileNumber || citizen?.mobileNumber || "9876543210";
 
   const address = property?.address?.doorNo
-    ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Civil Lines"}, ${cityName} - ${property.address.pincode || "143001"}`
-    : isPunjab
-    ? "42, Mall Road, Model Town, Amritsar - 143001"
-    : "21, Civil Lines, Kanpur Nagar - 208001";
+    ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Mall Road"}, ${cityName} - ${property.address.pincode || "143001"}`
+    : "42, Mall Road, Model Town, Amritsar, Punjab - 143001";
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");

@@ -262,11 +262,11 @@ function AnimatedBotText({
   );
 }
 
-// Authentic Power / Municipal Corporation circular seal matching the screenshot
+// Authentic Punjab State Power Corporation Limited (PSPCL) circular seal matching the screenshot
 function CorporationSeal({ className }: { className?: string }) {
   return (
     <div className={`flex justify-center items-center ${className || ""}`}>
-      <svg width="58" height="58" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Outer Red Ring */}
         <circle cx="50" cy="50" r="46.5" stroke="#C53030" strokeWidth="3" fill="#FFFDFD" />
         <circle cx="50" cy="50" r="41.5" stroke="#C53030" strokeWidth="1" strokeDasharray="2.5 1.5" fill="none" />
@@ -275,14 +275,14 @@ function CorporationSeal({ className }: { className?: string }) {
         <path id="sealPathTop" d="M 17,50 A 33,33 0 0,1 83,50" fill="none" />
         <path id="sealPathBottom" d="M 83,50 A 33,33 0 0,1 17,50" fill="none" />
 
-        <text fontSize="6.2" fontWeight="700" fill="#C53030" letterSpacing="0.7">
+        <text fontSize="5.2" fontWeight="700" fill="#C53030" letterSpacing="0.4">
           <textPath href="#sealPathTop" startOffset="50%" textAnchor="middle">
-            POWER CORPORATION LIMITED
+            PUNJAB STATE POWER CORP. LTD.
           </textPath>
         </text>
-        <text fontSize="5.2" fontWeight="600" fill="#C53030" letterSpacing="0.6">
+        <text fontSize="4.6" fontWeight="600" fill="#C53030" letterSpacing="0.5">
           <textPath href="#sealPathBottom" startOffset="50%" textAnchor="middle">
-            • U.P. GOVT. UNDERTAKING •
+            • PUNJAB GOVT. UNDERTAKING •
           </textPath>
         </text>
 
@@ -290,15 +290,20 @@ function CorporationSeal({ className }: { className?: string }) {
         <circle cx="50" cy="50" r="23.5" fill="#C53030" />
 
         {/* Transmission Tower / Insignia inside Medallion */}
-        <path d="M50 31 L44 68 H56 L50 31 Z" stroke="white" strokeWidth="1.6" fill="none" strokeLinejoin="round" />
-        <line x1="39" y1="43" x2="61" y2="43" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-        <line x1="42" y1="52" x2="58" y2="52" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-        <line x1="43.5" y1="60" x2="56.5" y2="60" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-        <line x1="40" y1="43" x2="57" y2="52" stroke="white" strokeWidth="1.2" />
-        <line x1="60" y1="43" x2="43" y2="52" stroke="white" strokeWidth="1.2" />
-        <line x1="43" y1="52" x2="56" y2="60" stroke="white" strokeWidth="1.2" />
-        <line x1="57" y1="52" x2="44" y2="60" stroke="white" strokeWidth="1.2" />
-        <circle cx="50" cy="29" r="1.5" fill="white" />
+        <path d="M50 30 L45 59 H55 L50 30 Z" stroke="white" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+        <line x1="41" y1="40" x2="59" y2="40" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="43" y1="48" x2="57" y2="48" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="44.5" y1="54" x2="55.5" y2="54" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+        <line x1="42" y1="40" x2="56" y2="48" stroke="white" strokeWidth="1.1" />
+        <line x1="58" y1="40" x2="44" y2="48" stroke="white" strokeWidth="1.1" />
+        <line x1="44" y1="48" x2="55" y2="54" stroke="white" strokeWidth="1.1" />
+        <line x1="56" y1="48" x2="45" y2="54" stroke="white" strokeWidth="1.1" />
+        <circle cx="50" cy="28.5" r="1.3" fill="white" />
+
+        {/* PSPCL Acronym */}
+        <text x="50" y="67.5" textAnchor="middle" fontSize="6.2" fontWeight="900" fill="white" letterSpacing="0.8" fontFamily="sans-serif">
+          PSPCL
+        </text>
       </svg>
     </div>
   );
@@ -318,42 +323,35 @@ function BillReceiptCard({
 }) {
   const isWater = bill?.businessService === "WS" || !!water;
 
-  // Determine Identifier to show inside the prominent dashed box
-  const displayId = isWater
+  // Determine Identifier to show inside the prominent dashed box (PJB instead of KNP)
+  const rawId = isWater
     ? water?.connectionNumber || bill?.consumerCode || "WC-123-456-78"
-    : property?.propertyId || bill?.consumerCode || "KNP-123-456-78";
+    : property?.propertyId || bill?.consumerCode || "PJB-123-456-78";
+  const displayId = rawId.replace(/^KNP/i, "PJB");
 
-  const isPunjab = displayId.includes("PB-PT") || property?.address?.city?.toLowerCase().includes("amritsar");
-
-  const corpTitle = isPunjab
-    ? `MUNICIPAL CORPORATION ${property?.address?.city?.toUpperCase() || "AMRITSAR"}, PUNJAB`
-    : "KANPUR CORPORATION LIMITED, UTTAR PRADESH";
+  const corpTitle = "PUNJAB STATE POWER CORPORATION LIMITED (PSPCL)";
 
   // Customer Name
   const customerName =
     property?.owners?.[0]?.name ||
-    (citizen?.name ? (citizen.name.startsWith("Mr.") ? citizen.name : `Mr. ${citizen.name}`) : isPunjab ? "Mr. Gurpreet Singh" : "Mr. Akash Kumar");
+    (citizen?.name ? (citizen.name.startsWith("Mr.") ? citizen.name : `Mr. ${citizen.name}`) : "Mr. Gurpreet Singh");
 
   // Mobile corresponding to the selected PTID
   const mobileNo =
     property?.owners?.[0]?.mobileNumber ||
     citizen?.mobileNumber ||
-    (isPunjab ? "9876543210" : "9123456789");
+    "9876543210";
 
   // Address
   const addressLine1 = property?.address?.doorNo
-    ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Civil Lines"},`
-    : isPunjab
-    ? "42, Mall Road,"
-    : "21, Civil Lines,";
+    ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Mall Road"},`
+    : "42, Mall Road,";
 
   const addressLine2 = property?.address?.city
-    ? `${property.address.city}`
-    : isPunjab
-    ? "Model Town, Amritsar"
-    : "Kanpur Nagar";
+    ? `${property.address.city}, Punjab`
+    : "Model Town, Amritsar, Punjab";
 
-  const wardNo = property?.wardNo || "30";
+  const wardNo = property?.wardNo || "12";
   const status = property?.status || "Active";
   const financialYear = property?.financialYear || "2025-2026";
 
@@ -789,9 +787,9 @@ export default function App() {
             mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
             propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
             uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
-          })) || (await msevaService.searchProperty({ propertyId: "PB-PT-123-456-78" })) || (await msevaService.searchProperty({ propertyId: "KNP-123-456-78" }));
+          })) || (await msevaService.searchProperty({ propertyId: "PJB-123-456-78" }));
 
-        const bill = await msevaService.fetchBill(property?.propertyId || "PB-PT-123-456-78", "PT");
+        const bill = await msevaService.fetchBill(property?.propertyId || "PJB-123-456-78", "PT");
         setTyping(false);
 
         const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_tax");
@@ -816,9 +814,9 @@ export default function App() {
             mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
             propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
             uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
-          })) || (await msevaService.searchProperty({ propertyId: "PB-PT-123-456-78" })) || (await msevaService.searchProperty({ propertyId: "KNP-123-456-78" }));
+          })) || (await msevaService.searchProperty({ propertyId: "PJB-123-456-78" }));
 
-        const bill = await msevaService.fetchBill(property?.propertyId || "PB-PT-123-456-78", "PT");
+        const bill = await msevaService.fetchBill(property?.propertyId || "PJB-123-456-78", "PT");
         setTyping(false);
 
         const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_details");
@@ -1023,7 +1021,7 @@ export default function App() {
     }
 
     // Point 5: Inactive PTID Detection in Chat
-    const ptidPatternMatch = userText.match(/\b([A-Z]{2,4}-PT-[A-Z0-9-]+|KNP-[A-Z0-9-]+)\b/i);
+    const ptidPatternMatch = userText.match(/\b([A-Z]{2,4}-PT-[A-Z0-9-]+|PJB-[A-Z0-9-]+|KNP-[A-Z0-9-]+)\b/i);
     if (ptidPatternMatch) {
       const extractedPtid = ptidPatternMatch[1].toUpperCase();
       if (msevaService.isPtidInWorkflow(extractedPtid)) {
@@ -2047,17 +2045,17 @@ export default function App() {
                                 key: "ptid",
                                 label: cardLabels.optPtid,
                                 placeholder: cardLabels.placeholderPtid,
-                                testHint: "Use test PTID (Active): KNP-123-456-78",
-                                testVal: "KNP-123-456-78",
-                                workflowHint: "Test PTID (In Workflow): KNP-999-000-11",
-                                workflowVal: "KNP-999-000-11",
+                                testHint: "Use test PTID (Active): PJB-123-456-78",
+                                testVal: "PJB-123-456-78",
+                                workflowHint: "Test PTID (In Workflow): PJB-999-000-11",
+                                workflowVal: "PJB-999-000-11",
                               },
                               {
                                 key: "mobile",
                                 label: cardLabels.optMobile,
                                 placeholder: cardLabels.placeholderMobile,
-                                testHint: "Use test mobile: 9123456789",
-                                testVal: "9123456789",
+                                testHint: "Use test mobile: 9876543210",
+                                testVal: "9876543210",
                               },
                             ];
 

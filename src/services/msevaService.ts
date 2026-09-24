@@ -131,28 +131,7 @@ const MOCK_CITIZEN: CitizenUser = {
 };
 
 const MOCK_PROPERTY: PropertyRecord = {
-  propertyId: "KNP-123-456-78",
-  tenantId: "up.kanpur",
-  accountId: "citizen-uid-uuid-8899", // Existing linked account ID (or mismatch)
-  status: "Active",
-  wardNo: "30",
-  financialYear: "2025-2026",
-  owners: [
-    { name: "Mr. Akash Kumar", mobileNumber: "9123456789", relationship: "Primary Owner" },
-    { name: "Mrs. Sunita Kumar", mobileNumber: "9123456788", relationship: "Joint Owner" },
-  ],
-  address: {
-    doorNo: "21",
-    buildingName: "",
-    street: "Civil Lines",
-    locality: "Civil Lines",
-    city: "Kanpur Nagar",
-    pincode: "208001",
-  },
-};
-
-const MOCK_PROPERTY_PUNJAB: PropertyRecord = {
-  propertyId: "PB-PT-123-456-78",
+  propertyId: "PJB-123-456-78",
   tenantId: "pb.amritsar",
   accountId: "u123-abc-789",
   status: "Active",
@@ -166,30 +145,51 @@ const MOCK_PROPERTY_PUNJAB: PropertyRecord = {
     doorNo: "42",
     buildingName: "",
     street: "Mall Road",
-    locality: "Civil Lines",
+    locality: "Model Town",
+    city: "Amritsar",
+    pincode: "143001",
+  },
+};
+
+const MOCK_PROPERTY_PUNJAB: PropertyRecord = {
+  propertyId: "PJB-123-456-78",
+  tenantId: "pb.amritsar",
+  accountId: "u123-abc-789",
+  status: "Active",
+  wardNo: "12",
+  financialYear: "2025-2026",
+  owners: [
+    { name: "Mr. Gurpreet Singh", mobileNumber: "9876543210", relationship: "Primary Owner" },
+    { name: "Mrs. Harpreet Kaur", mobileNumber: "9876543211", relationship: "Joint Owner" },
+  ],
+  address: {
+    doorNo: "42",
+    buildingName: "",
+    street: "Mall Road",
+    locality: "Model Town",
     city: "Amritsar",
     pincode: "143001",
   },
 };
 
 const MOCK_PROPERTY_WORKFLOW: PropertyRecord = {
-  propertyId: "KNP-999-000-11",
-  tenantId: "up.kanpur",
+  propertyId: "PJB-999-000-11",
+  tenantId: "pb.amritsar",
   accountId: "citizen-wf-001",
   status: "IN_WORKFLOW",
   wardNo: "14",
   financialYear: "2025-2026",
   owners: [
-    { name: "Mr. Rajesh Sharma", mobileNumber: "9123456780", relationship: "Primary Owner" },
-    { name: "Mrs. Anita Sharma", mobileNumber: "9123456781", relationship: "Joint Owner" },
+    { name: "Mr. Balwinder Singh", mobileNumber: "9876543212", relationship: "Primary Owner" },
+    { name: "Mrs. Manpreet Kaur", mobileNumber: "9876543213", relationship: "Joint Owner" },
   ],
   address: {
     doorNo: "88",
     buildingName: "",
     street: "GT Road",
-    locality: "Sharda Nagar",
-    city: "Kanpur Nagar",
-    pincode: "208025",
+    locality: "Putligarh",
+    city: "Amritsar",
+    pincode: "143001",
   },
   workflow: {
     action: "VERIFY",
@@ -200,7 +200,7 @@ const MOCK_PROPERTY_WORKFLOW: PropertyRecord = {
 
 const MOCK_WATER: WaterConnection = {
   connectionNumber: "WC-334455",
-  propertyId: "KNP-123-456-78",
+  propertyId: "PJB-123-456-78",
   meterId: "MTR-99214",
   connectionType: "Metered Domestic",
   waterSource: "Municipal Supply",
@@ -210,7 +210,7 @@ const MOCK_WATER: WaterConnection = {
 
 const MOCK_SEWERAGE: SewerageConnection = {
   connectionNumber: "SC-334455",
-  propertyId: "KNP-123-456-78",
+  propertyId: "PJB-123-456-78",
   noOfWaterClosets: 2,
   connectionType: "Domestic",
   status: "Active",
@@ -219,10 +219,10 @@ const MOCK_SEWERAGE: SewerageConnection = {
 
 const MOCK_PT_BILL: ConsolidatedBill = {
   billId: "BILL-2026-5600",
-  consumerCode: "KNP-123-456-78",
+  consumerCode: "PJB-123-456-78",
   businessService: "PT",
   totalAmount: 5600.0,
-  tenantId: "up.kanpur",
+  tenantId: "pb.amritsar",
   billDate: "2026-05-27",
   dueDate: "2026-10-31",
   currentTaxDemand: 4500.0,
@@ -293,6 +293,7 @@ class MSevaService {
   isPtidInWorkflow(ptid: string): boolean {
     const clean = (ptid || "").trim().toUpperCase();
     return (
+      clean === "PJB-999-000-11" ||
       clean === "KNP-999-000-11" ||
       clean === "PB-PT-WORKFLOW-01" ||
       clean.includes("WORKFLOW") ||
@@ -309,46 +310,33 @@ class MSevaService {
   ): Promise<IdentifiedRecordPreview> {
     await new Promise((r) => setTimeout(r, 350));
     const isWater = method === "water_consumer" || method === "sewerage_consumer";
-    const cleanId = identifier.trim().toUpperCase();
+    const cleanId = identifier.trim().toUpperCase().replace(/^KNP/i, "PJB");
     const isWorkflow = method === "ptid" && this.isPtidInWorkflow(cleanId);
-    const isPunjab = cleanId.includes("PB-PT") || identifier.includes("9876543210");
 
     let owners = [
-      { name: "Mr. Akash Kumar", mobileNumber: "9123456789", relationship: "Primary Owner" },
-      { name: "Mrs. Sunita Kumar", mobileNumber: "9123456788", relationship: "Joint Owner" },
+      { name: "Mr. Gurpreet Singh", mobileNumber: "9876543210", relationship: "Primary Owner" },
+      { name: "Mrs. Harpreet Kaur", mobileNumber: "9876543211", relationship: "Joint Owner" },
     ];
-    let registeredMobile = "9123456789";
-    let maskedMobile = "+91 ******6789";
-    let ownerName = "Mr. Akash Kumar & Mrs. Sunita Kumar";
-    let maskedOwner = "Mr. Akash K**** & Mrs. Sunita K****";
-    let address = "21, Civil Lines, Kanpur Nagar";
-    let propertyId = cleanId || "KNP-123-456-78";
+    let registeredMobile = "9876543210";
+    let maskedMobile = "+91 ******3210";
+    let ownerName = "Mr. Gurpreet Singh & Mrs. Harpreet Kaur";
+    let maskedOwner = "Mr. Gurpreet S**** & Mrs. Harpreet K****";
+    let address = "42, Mall Road, Model Town, Amritsar, Punjab";
+    let propertyId = cleanId || "PJB-123-456-78";
     let status = "Active";
 
     if (isWorkflow) {
       owners = [
-        { name: "Mr. Rajesh Sharma", mobileNumber: "9123456780", relationship: "Primary Owner" },
-        { name: "Mrs. Anita Sharma", mobileNumber: "9123456781", relationship: "Joint Owner" },
+        { name: "Mr. Balwinder Singh", mobileNumber: "9876543212", relationship: "Primary Owner" },
+        { name: "Mrs. Manpreet Kaur", mobileNumber: "9876543213", relationship: "Joint Owner" },
       ];
-      registeredMobile = "9123456780";
-      maskedMobile = "+91 ******6780";
-      ownerName = "Mr. Rajesh Sharma & Mrs. Anita Sharma";
-      maskedOwner = "Mr. Rajesh S**** & Mrs. Anita S****";
-      address = "88, GT Road, Sharda Nagar, Kanpur Nagar";
-      propertyId = identifier.trim() || "KNP-999-000-11";
+      registeredMobile = "9876543212";
+      maskedMobile = "+91 ******3212";
+      ownerName = "Mr. Balwinder Singh & Mrs. Manpreet Kaur";
+      maskedOwner = "Mr. Balwinder S**** & Mrs. Manpreet K****";
+      address = "88, GT Road, Putligarh, Amritsar, Punjab";
+      propertyId = cleanId || "PJB-999-000-11";
       status = "IN_WORKFLOW";
-    } else if (isPunjab) {
-      owners = [
-        { name: "Mr. Gurpreet Singh", mobileNumber: "9876543210", relationship: "Primary Owner" },
-        { name: "Mrs. Harpreet Kaur", mobileNumber: "9876543211", relationship: "Joint Owner" },
-      ];
-      registeredMobile = "9876543210";
-      maskedMobile = "+91 ******3210";
-      ownerName = "Mr. Gurpreet Singh & Mrs. Harpreet Kaur";
-      maskedOwner = "Mr. Gurpreet S**** & Mrs. Harpreet K****";
-      address = "42, Mall Road, Model Town, Amritsar";
-      propertyId = identifier.trim() || "PB-PT-123-456-78";
-      status = "Active";
     } else if (method === "mobile" && identifier.trim().length >= 4) {
       const cleanDigits = identifier.replace(/\D/g, "");
       registeredMobile = cleanDigits;
@@ -399,12 +387,11 @@ class MSevaService {
     await new Promise((r) => setTimeout(r, 500));
     // Test UAT valid OTP is 123456
     if (otp === "123456") {
-      const isPunjab = identifier.toUpperCase().includes("PB-PT") || identifier.includes("9876543210");
       const user = {
         ...MOCK_CITIZEN,
-        name: isPunjab ? "Mr. Gurpreet Singh" : "Mr. Akash Kumar",
-        mobileNumber: identifier,
-        userName: identifier,
+        name: "Mr. Gurpreet Singh",
+        mobileNumber: identifier || "9876543210",
+        userName: identifier || "9876543210",
       };
       return { success: true, user };
     }
@@ -417,11 +404,12 @@ class MSevaService {
   // 4.3.1 Search Property by PTID, Mobile, or UID
   async searchProperty(query: { propertyId?: string; mobileNumber?: string; uuid?: string }): Promise<PropertyRecord | null> {
     await new Promise((r) => setTimeout(r, 450));
-    const ptid = query.propertyId?.toUpperCase().trim();
+    const ptid = query.propertyId?.toUpperCase().trim().replace(/^KNP/i, "PJB");
 
     // Support empty search results state
     if (
       ptid === "NOTFOUND" ||
+      ptid === "PJB-000-000-00" ||
       ptid === "KNP-000-000-00" ||
       query.propertyId?.toUpperCase().includes("INVALID") ||
       query.mobileNumber === "0000000000"
@@ -436,19 +424,9 @@ class MSevaService {
       };
     }
 
-    const isPunjab =
-      query.propertyId?.toUpperCase().includes("PB-PT") ||
-      query.mobileNumber === "9876543210";
-
-    if (isPunjab) {
-      return {
-        ...MOCK_PROPERTY_PUNJAB,
-        propertyId: query.propertyId?.toUpperCase() || "PB-PT-123-456-78",
-      };
-    }
     return {
-      ...this.currentProperty,
-      propertyId: query.propertyId?.toUpperCase() || "KNP-123-456-78",
+      ...MOCK_PROPERTY_PUNJAB,
+      propertyId: ptid || "PJB-123-456-78",
     };
   }
 
@@ -475,9 +453,10 @@ class MSevaService {
     await new Promise((r) => setTimeout(r, 500));
     if (businessService === "WS") return MOCK_WS_BILL;
     if (businessService === "SW") return MOCK_SW_BILL;
+    const cleanCode = (consumerCode || MOCK_PT_BILL.consumerCode).replace(/^KNP/i, "PJB");
     return {
       ...MOCK_PT_BILL,
-      consumerCode: consumerCode || MOCK_PT_BILL.consumerCode,
+      consumerCode: cleanCode,
     };
   }
 
@@ -510,7 +489,7 @@ class MSevaService {
       tenantId: bill.tenantId,
       txnAmount: bill.totalAmount,
       billId: bill.billId,
-      consumerCode: bill.consumerCode,
+      consumerCode: bill.consumerCode.replace(/^KNP/i, "PJB"),
       businessService: bill.businessService,
       gateway,
       txnStatus: "PENDING",
@@ -521,13 +500,14 @@ class MSevaService {
   // 4.7.2 Verify Payment Transaction
   async verifyPayment(txnId: string, bill?: ConsolidatedBill, shouldSimulateFailure = false): Promise<PaymentTransaction> {
     await new Promise((r) => setTimeout(r, 500));
+    const consumerCode = (bill?.consumerCode || "PJB-123-456-78").replace(/^KNP/i, "PJB");
     if (shouldSimulateFailure || txnId.includes("FAIL")) {
       return {
         txnId,
-        tenantId: bill?.tenantId || "up.kanpur",
+        tenantId: bill?.tenantId || "pb.amritsar",
         txnAmount: bill?.totalAmount || 5600.0,
         billId: bill?.billId || "BILL-2026-5600",
-        consumerCode: bill?.consumerCode || "KNP-123-456-78",
+        consumerCode,
         businessService: bill?.businessService || "PT",
         gateway: "AXIS",
         txnStatus: "FAILURE",
@@ -537,10 +517,10 @@ class MSevaService {
     const receiptNumber = `PB_RCPT_2026_${Math.floor(10000 + Math.random() * 90000)}`;
     return {
       txnId,
-      tenantId: bill?.tenantId || "up.kanpur",
+      tenantId: bill?.tenantId || "pb.amritsar",
       txnAmount: bill?.totalAmount || 5600.0,
       billId: bill?.billId || "BILL-2026-5600",
-      consumerCode: bill?.consumerCode || "KNP-123-456-78",
+      consumerCode,
       businessService: bill?.businessService || "PT",
       gateway: "AXIS",
       txnStatus: "SUCCESS",
