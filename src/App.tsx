@@ -566,13 +566,16 @@ export default function App() {
     }
 
     if (selectedVerificationMethod === "mobile") {
-      const cleanDigits = val.replace(/\D/g, "");
-      if (cleanDigits.length < 10) {
-        setAuthIdentifierError(cardLabels.mobileLessThan10(cleanDigits.length));
+      if (/\D/.test(val)) {
+        setAuthIdentifierError(cardLabels.mobileDigitsOnlyError);
         return;
       }
-      if (cleanDigits.length > 10) {
-        setAuthIdentifierError(cardLabels.mobileMoreThan10(cleanDigits.length));
+      if (val.length < 10) {
+        setAuthIdentifierError(cardLabels.mobileLessThan10(val.length));
+        return;
+      }
+      if (val.length > 10) {
+        setAuthIdentifierError(cardLabels.mobileMoreThan10(val.length));
         return;
       }
     }
@@ -960,9 +963,26 @@ export default function App() {
     const isYearOrSmallQuantity =
       /^(19\d\d|20\d\d|100|200|300|400|500|600|50|42|1|2|3|4|5|6|7|8|9|10)$/.test(userText.trim());
 
-    if (isExplicitMobileInput && !isYearOrSmallQuantity && digitsOnly.length > 0 && !authOtpSent) {
+    if (isExplicitMobileInput && !isYearOrSmallQuantity && !authOtpSent) {
       const localizedLabels = languageService.getCardLabels(activeLang);
-      if (digitsOnly.length < 10) {
+
+      // Check if user entered letters or non-digit characters rather than phone digits
+      const cleanedCandidate = userText.replace(/\b(my|is|mobile|phone|number|mob|contact|no|num|फ़ोन|मोबाइल|ਮੋਬਾਈਲ|ਨੰਬਰ|का|हूँ|mera|hai)\b/gi, "").trim();
+      if (cleanedCandidate.length > 0 && /[^\d\s\-+]/.test(cleanedCandidate)) {
+        setTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: `⚠️ ${localizedLabels.mobileDigitsOnlyError}`,
+            time: now(),
+          },
+        ]);
+        return;
+      }
+
+      if (digitsOnly.length > 0 && digitsOnly.length < 10) {
         setTyping(false);
         setMessages((prev) => [
           ...prev,
@@ -1782,9 +1802,10 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                                   setAuthIdentifier(newVal);
 
                                   if (activeMethodKey === "mobile") {
-                                    const cleanDigits = newVal.replace(/\D/g, "");
-                                    if (cleanDigits.length > 10) {
-                                      setAuthIdentifierError(cardLabels.mobileMoreThan10(cleanDigits.length));
+                                    if (newVal && /\D/.test(newVal)) {
+                                      setAuthIdentifierError(cardLabels.mobileDigitsOnlyError);
+                                    } else if (newVal.length > 10) {
+                                      setAuthIdentifierError(cardLabels.mobileMoreThan10(newVal.length));
                                     } else if (authIdentifierError) {
                                       setAuthIdentifierError("");
                                     }
@@ -1794,11 +1815,13 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                                 }}
                                 onBlur={() => {
                                   if (activeMethodKey === "mobile" && authIdentifier.trim()) {
-                                    const cleanDigits = authIdentifier.replace(/\D/g, "");
-                                    if (cleanDigits.length < 10) {
-                                      setAuthIdentifierError(cardLabels.mobileLessThan10(cleanDigits.length));
-                                    } else if (cleanDigits.length > 10) {
-                                      setAuthIdentifierError(cardLabels.mobileMoreThan10(cleanDigits.length));
+                                    const currentVal = authIdentifier.trim();
+                                    if (/\D/.test(currentVal)) {
+                                      setAuthIdentifierError(cardLabels.mobileDigitsOnlyError);
+                                    } else if (currentVal.length < 10) {
+                                      setAuthIdentifierError(cardLabels.mobileLessThan10(currentVal.length));
+                                    } else if (currentVal.length > 10) {
+                                      setAuthIdentifierError(cardLabels.mobileMoreThan10(currentVal.length));
                                     }
                                   }
                                 }}
