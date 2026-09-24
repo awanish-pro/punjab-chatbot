@@ -2009,10 +2009,11 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                             type="button"
                             disabled={isPaying}
                             onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
+                            style={{ fontWeight: 500 }}
                             className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
                           >
                             {isPaying ? (
-                              <span className="flex items-center gap-1.5">
+                              <span className="flex items-center gap-1.5 font-medium" style={{ fontWeight: 500 }}>
                                 <svg className="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
@@ -2020,7 +2021,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                                 <span>Redirecting to Payment Gateway...</span>
                               </span>
                             ) : (
-                              <span>{cardLabels.payNow} ({selectedGateway})</span>
+                              <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.payNow} ({selectedGateway})</span>
                             )}
                           </button>
                         </div>
@@ -2072,18 +2073,21 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                             </div>
                           </div>
 
-                          {/* 3. Download Payment Receipt CTA */}
+                          {/* 3. Download Payment Receipt CTA with font-weight medium */}
                           <button
                             type="button"
                             onClick={() => handleDownloadReceipt(msg.card!.transaction!, msg.card?.bill, msg.card?.property)}
+                            style={{ fontWeight: 500 }}
                             className="w-full mt-0.5 py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="7 10 12 15 17 10" />
                               <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
-                            <span>{cardLabels.downloadReceipt || "Download Payment Receipt"}</span>
+                            <span className="font-medium" style={{ fontWeight: 500 }}>
+                              {cardLabels.downloadReceipt || "Download Payment Receipt"}
+                            </span>
                           </button>
                         </div>
                       )}
@@ -2147,16 +2151,18 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                             <button
                               type="button"
                               onClick={() => msg.card?.property && handleConfirmUidLink(msg.card.property.propertyId)}
+                              style={{ fontWeight: 500 }}
                               className="flex-1 py-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-medium rounded-lg text-xs transition-all cursor-pointer shadow-xs"
                             >
-                              {cardLabels.yesLinkUid}
+                              <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.yesLinkUid}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => msg.card?.property && handleRejectUidLink(msg.card.property.propertyId)}
+                              style={{ fontWeight: 500 }}
                               className="flex-1 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-xs transition-all cursor-pointer"
                             >
-                              {cardLabels.noReportMismatch}
+                              <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.noReportMismatch}</span>
                             </button>
                           </div>
                         </div>
