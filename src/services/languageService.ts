@@ -625,6 +625,10 @@ export class LanguageService {
           mobileDigitsOnlyError: "कृपया केवल 10 अंकों का वैध मोबाइल नंबर दर्ज करें।",
           totalOutstanding: "कुल बकाया:",
           paymentSuccessful: "भुगतान सफल रहा",
+          workflowPtidMessage: "This Property ID is currently in workflow status. Please visit your ULB office for further assistance.",
+          postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
+          downloadReceipt: "भुगतान रसीद डाउनलोड करें",
+          paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `भुगतान पुष्टि: लेन-देन आईडी (Transaction ID): ${txnId}। ₹${amt} का भुगतान ${gw} गेटवे के माध्यम से सफलतापूर्वक संपन्न हुआ।`,
         };
       case "hinglish":
         return {
@@ -636,13 +640,13 @@ export class LanguageService {
           optWaterConsumer: "Water Consumer Number",
           optSewerageConsumer: "Sewerage Consumer Number",
           placeholderUid: "12-digit UID enter karein (jaise u123-abc-789)",
-          placeholderPtid: "Property Tax ID enter karein (jaise PB-PT-2024-05-12-001234)",
+          placeholderPtid: "Property Tax ID enter karein (jaise KNP-123-456-78)",
           placeholderMobile: "10-digit registered mobile number enter karein",
           placeholderWaterConsumer: "Water Consumer Number enter karein (jaise WC-334455)",
           placeholderSewerageConsumer: "Sewerage Consumer Number enter karein (jaise SC-334455)",
           testUid: "Use test UID: u123-abc-789",
-          testPtid: "Use test PTID: PB-PT-2024-05-12-001234",
-          testMobile: "Use test mobile: 9876543210",
+          testPtid: "Use test PTID: KNP-123-456-78",
+          testMobile: "Use test mobile: 9123456789",
           testWaterConsumer: "Use test water no: WC-334455",
           testSewerageConsumer: "Use test sewerage no: SC-334455",
           emptyError: "Please verification details enter karein",
@@ -657,7 +661,7 @@ export class LanguageService {
           verifyingOtp: "Verify ho raha hai...",
           testOtpHint: "UAT Test OTP: 123456",
           autoFillOtp: "Auto-fill 123456",
-          useTestPhone: "Use test mobile: 9876543210",
+          useTestPhone: "Use test mobile: 9123456789",
           recordIdentifiedTitle: "Record Identified (MSeva)",
           recordPreviewPrompt: "Record match ho gaya hai. Please proceed karne ke liye registered mobile par aaya OTP enter karein:",
           ownerNameLabel: "Owner Name",
@@ -684,6 +688,10 @@ export class LanguageService {
           mobileDigitsOnlyError: "Please sirf 10 digits ka valid mobile number enter karein.",
           totalOutstanding: "Total Outstanding:",
           paymentSuccessful: "Payment Successful",
+          workflowPtidMessage: "This Property ID is currently in workflow status. Please visit your ULB office for further assistance.",
+          postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
+          downloadReceipt: "Download Payment Receipt",
+          paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `Payment confirmation: Transaction ID: ${txnId}. ₹${amt} ka payment ${gw} Gateway se successfully complete ho gaya.`,
         };
       case "punjabi":
         return {
@@ -695,13 +703,13 @@ export class LanguageService {
           optWaterConsumer: "ਵਾਟਰ ਖਪਤਕਾਰ ਨੰਬਰ",
           optSewerageConsumer: "ਸੀਵਰੇਜ ਖਪਤਕਾਰ ਨੰਬਰ",
           placeholderUid: "12 ਅੰਕਾਂ ਦਾ UID ਦਰਜ ਕਰੋ (ਜਿਵੇਂ u123-abc-789)",
-          placeholderPtid: "ਪ੍ਰਾਪਰਟੀ ਟੈਕਸ ਆਈਡੀ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ PB-PT-2024-05-12-001234)",
+          placeholderPtid: "ਪ੍ਰਾਪਰਟੀ ਟੈਕਸ ਆਈਡੀ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ KNP-123-456-78)",
           placeholderMobile: "10 ਅੰਕਾਂ ਦਾ ਰਜਿਸਟਰਡ ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ",
           placeholderWaterConsumer: "ਵਾਟਰ ਖਪਤਕਾਰ ਨੰਬਰ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ WC-334455)",
           placeholderSewerageConsumer: "ਸੀਵਰੇਜ ਖਪਤਕਾਰ ਨੰਬਰ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ SC-334455)",
           testUid: "ਟੈਸਟ UID: u123-abc-789",
-          testPtid: "ਟੈਸਟ PTID: PB-PT-2024-05-12-001234",
-          testMobile: "ਟੈਸਟ ਮੋਬਾਈਲ: 9876543210",
+          testPtid: "ਟੈਸਟ PTID: KNP-123-456-78",
+          testMobile: "ਟੈਸਟ ਮੋਬਾਈਲ: 9123456789",
           testWaterConsumer: "ਟੈਸਟ ਵਾਟਰ ਨੰ: WC-334455",
           testSewerageConsumer: "ਟੈਸਟ ਸੀਵਰੇਜ ਨੰ: SC-334455",
           emptyError: "ਕਿਰਪਾ ਕਰਕੇ ਤਸਦੀਕ ਵੇਰਵੇ ਦਰਜ ਕਰੋ",
@@ -716,7 +724,7 @@ export class LanguageService {
           verifyingOtp: "ਤਸਦੀਕ ਹੋ ਰਹੀ ਹੈ...",
           testOtpHint: "UAT ਟੈਸਟ OTP: 123456",
           autoFillOtp: "ਆਟੋ-ਫਿਲ 123456",
-          useTestPhone: "ਟੈਸਟ ਮੋਬਾਈਲ ਨੰਬਰ: 9876543210",
+          useTestPhone: "ਟੈਸਟ ਮੋਬਾਈਲ ਨੰਬਰ: 9123456789",
           recordIdentifiedTitle: "MSeva ਰਿਕਾਰਡ ਤਸਦੀਕ",
           recordPreviewPrompt: "ਰਿਕਾਰਡ ਮਿਲ ਗਿਆ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਅੱਗੇ ਵਧਣ ਲਈ ਰਜਿਸਟਰਡ ਮੋਬਾਈਲ 'ਤੇ ਭੇਜਿਆ OTP ਦਰਜ ਕਰੋ:",
           ownerNameLabel: "ਮਾਲਕ ਦਾ ਨਾਮ",
@@ -743,6 +751,10 @@ export class LanguageService {
           mobileDigitsOnlyError: "ਕਿਰਪਾ ਕਰਕੇ ਸਿਰਫ਼ 10 ਅੰਕਾਂ ਦਾ ਵੈਧ ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ।",
           totalOutstanding: "ਕੁੱਲ ਬਕਾਇਆ:",
           paymentSuccessful: "ਭੁਗਤਾਨ ਸਫਲ ਰਿਹਾ",
+          workflowPtidMessage: "This Property ID is currently in workflow status. Please visit your ULB office for further assistance.",
+          postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
+          downloadReceipt: "ਭੁਗਤਾਨ ਰਸੀਦ ਡਾਊਨਲੋਡ ਕਰੋ",
+          paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `ਭੁਗਤਾਨ ਪੁਸ਼ਟੀ: ਲੈਣ-ਦੇਣ ID (Transaction ID): ${txnId}। ₹${amt} ਦਾ ਭੁਗਤਾਨ ${gw} ਗੇਟਵੇ ਰਾਹੀਂ ਸਫਲਤਾਪੂਰਵਕ ਮੁਕੰਮਲ ਹੋ ਗਿਆ।`,
         };
       case "english":
       default:
@@ -755,13 +767,13 @@ export class LanguageService {
           optWaterConsumer: "Water Consumer Number",
           optSewerageConsumer: "Sewerage Consumer Number",
           placeholderUid: "Enter 12-digit UID (e.g. u123-abc-789)",
-          placeholderPtid: "Enter Property Tax ID (e.g. PB-PT-2024-05-12-001234)",
+          placeholderPtid: "Enter Property Tax ID (e.g. KNP-123-456-78)",
           placeholderMobile: "Enter 10-digit registered mobile number",
           placeholderWaterConsumer: "Enter Water Consumer Number (e.g. WC-334455)",
           placeholderSewerageConsumer: "Enter Sewerage Consumer Number (e.g. SC-334455)",
           testUid: "Use test UID: u123-abc-789",
-          testPtid: "Use test PTID: PB-PT-2024-05-12-001234",
-          testMobile: "Use test mobile: 9876543210",
+          testPtid: "Use test PTID: KNP-123-456-78",
+          testMobile: "Use test mobile: 9123456789",
           testWaterConsumer: "Use test water no: WC-334455",
           testSewerageConsumer: "Use test sewerage no: SC-334455",
           emptyError: "Please enter the required verification details",
@@ -776,7 +788,7 @@ export class LanguageService {
           verifyingOtp: "Verifying OTP...",
           testOtpHint: "UAT Test OTP: 123456",
           autoFillOtp: "Auto-fill 123456",
-          useTestPhone: "Use test mobile: 9876543210",
+          useTestPhone: "Use test mobile: 9123456789",
           recordIdentifiedTitle: "Record Identified (MSeva)",
           recordPreviewPrompt: "Record identified. Please enter the OTP sent to your registered mobile to proceed:",
           ownerNameLabel: "Owner Name",
@@ -803,8 +815,24 @@ export class LanguageService {
           mobileDigitsOnlyError: "Please enter a valid 10-digit mobile number containing only numbers.",
           totalOutstanding: "Total Outstanding:",
           paymentSuccessful: "Payment Successful",
+          workflowPtidMessage: "This Property ID is currently in workflow status. Please visit your ULB office for further assistance.",
+          postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
+          downloadReceipt: "Download Payment Receipt",
+          paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `Payment confirmation: Transaction ID: ${txnId}. Payment of ₹${amt} completed successfully via ${gw} Gateway.`,
         };
     }
+  }
+
+  public getWorkflowPtidMessage(lang: SupportedLanguage = "english"): string {
+    return this.getCardLabels(lang).workflowPtidMessage;
+  }
+
+  public getPostPaymentNotification(lang: SupportedLanguage = "english"): string {
+    return this.getCardLabels(lang).postPaymentAssessmentNotification;
+  }
+
+  public getPaymentConfirmationMessage(lang: SupportedLanguage, txnId: string, amount: string, gateway: string): string {
+    return this.getCardLabels(lang).paymentConfirmationMsg(txnId, amount, gateway);
   }
 }
 

@@ -333,10 +333,10 @@ function BillReceiptCard({
     property?.owners?.[0]?.name ||
     (citizen?.name ? (citizen.name.startsWith("Mr.") ? citizen.name : `Mr. ${citizen.name}`) : isPunjab ? "Mr. Gurpreet Singh" : "Mr. Akash Kumar");
 
-  // Mobile
+  // Mobile corresponding to the selected PTID
   const mobileNo =
-    citizen?.mobileNumber ||
     property?.owners?.[0]?.mobileNumber ||
+    citizen?.mobileNumber ||
     (isPunjab ? "9876543210" : "9123456789");
 
   // Address
@@ -355,7 +355,6 @@ function BillReceiptCard({
   const wardNo = property?.wardNo || "30";
   const status = property?.status || "Active";
   const financialYear = property?.financialYear || "2025-2026";
-  const lastPaymentDate = property?.lastPaymentDate || "12 March, 2026";
 
   const dueAmount = bill?.totalAmount !== undefined
     ? Math.round(bill.totalAmount).toLocaleString("en-IN")
@@ -393,10 +392,24 @@ function BillReceiptCard({
         </h4>
         <div className="border-b border-dashed border-neutral-300 -mt-0.5 mb-1" />
 
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Customer Name</span>
-          <span className="text-neutral-900 font-medium text-right">{customerName}</span>
-        </div>
+        {/* Support Multiple / Joint Property Owners */}
+        {property?.owners && property.owners.length > 1 ? (
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Owner Names</span>
+            <div className="text-neutral-900 font-medium text-right leading-tight max-w-[62%]">
+              {property.owners.map((owner, idx) => (
+                <div key={idx} className={idx > 0 ? "mt-0.5" : ""}>
+                  {idx + 1}. {owner.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Customer Name</span>
+            <span className="text-neutral-900 font-medium text-right">{customerName}</span>
+          </div>
+        )}
 
         <div className="flex justify-between items-start text-[11.5px] font-mono">
           <span className="text-neutral-600">Mobile no.</span>
@@ -423,7 +436,7 @@ function BillReceiptCard({
         </div>
       </div>
 
-      {/* 6. Tax / Service Details Section */}
+      {/* 6. Tax / Service Details Section (Last payment date removed as not available in PT records) */}
       <div className="flex flex-col gap-1.5 pt-3">
         <h4 className="font-mono font-bold text-[12px] text-neutral-800">
           {isWater ? "Water Tax Details:" : "Property Tax Details:"}
@@ -433,15 +446,6 @@ function BillReceiptCard({
         <div className="flex justify-between items-start text-[11.5px] font-mono">
           <span className="text-neutral-600">Financial year</span>
           <span className="text-neutral-900 font-medium text-right">{financialYear}</span>
-        </div>
-
-        <div className="flex justify-between items-center text-[11.5px] font-mono">
-          <span className="text-neutral-600 leading-tight">
-            Last payment
-            <br />
-            date
-          </span>
-          <span className="text-neutral-900 font-medium text-right">{lastPaymentDate}</span>
         </div>
       </div>
 
@@ -573,10 +577,43 @@ export default function App() {
       }
     }
 
+    // Point 5: Inactive PTID Handling
+    if (selectedVerificationMethod === "ptid" && msevaService.isPtidInWorkflow(val)) {
+      const workflowMsg = languageService.getWorkflowPtidMessage(conversationLanguage);
+      setAuthIdentifierError(workflowMsg);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msgId++,
+          role: "bot",
+          text: workflowMsg,
+          time: now(),
+        },
+      ]);
+      return;
+    }
+
     setAuthIdentifierError("");
     setIsSendingOtp(true);
     // Step 4 – Retrieve & Verify Details through MSeva API
     const preview = await msevaService.verifyIdentifierPreview(selectedVerificationMethod, val);
+
+    if (preview.isWorkflow) {
+      setIsSendingOtp(false);
+      const workflowMsg = languageService.getWorkflowPtidMessage(conversationLanguage);
+      setAuthIdentifierError(workflowMsg);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msgId++,
+          role: "bot",
+          text: workflowMsg,
+          time: now(),
+        },
+      ]);
+      return;
+    }
+
     setIdentifiedPreview(preview);
 
     // Step 5 – OTP Verification: Assistant sends OTP to registered mobile number
@@ -873,6 +910,43 @@ export default function App() {
       setTyping(false);
       setAuthOtp(userText.trim());
       handleVerifyAuthOtp();
+      return;
+    }
+
+    // Point 5: Inactive PTID Detection in Chat
+    const ptidPatternMatch = userText.match(/\b([A-Z]{2,4}-PT-[A-Z0-9-]+|KNP-[A-Z0-9-]+)\b/i);
+    if (ptidPatternMatch) {
+      const extractedPtid = ptidPatternMatch[1].toUpperCase();
+      if (msevaService.isPtidInWorkflow(extractedPtid)) {
+        setTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: languageService.getWorkflowPtidMessage(activeLang),
+            time: now(),
+          },
+        ]);
+        return;
+      }
+    }
+
+    if (
+      textLower.includes("workflow status") ||
+      textLower.includes("ptid workflow") ||
+      (textLower.includes("ptid") && textLower.includes("workflow"))
+    ) {
+      setTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msgId++,
+          role: "bot",
+          text: languageService.getWorkflowPtidMessage(activeLang),
+          time: now(),
+        },
+      ]);
       return;
     }
 
@@ -1259,35 +1333,114 @@ export default function App() {
   }
 
   // Payment Handoff (Section 4.7)
-  async function handleInitiatePayment(bill: ConsolidatedBill) {
+  async function handleInitiatePayment(bill: ConsolidatedBill, property?: PropertyRecord) {
     setIsPaying(true);
-    const txn = await msevaService.createPaymentTransaction(bill, selectedGateway, citizen?.name || "Gurpreet Singh");
+    const citizenName = property?.owners?.[0]?.name || citizen?.name || "Akash Kumar";
+    const txn = await msevaService.createPaymentTransaction(bill, selectedGateway, citizenName);
+
+    // 3. Citizen is redirected to the portal's payment gateway to complete the transaction
+    try {
+      window.open(txn.redirectUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.warn("External gateway redirect open error:", err);
+    }
+
     setTimeout(async () => {
-      const verifiedTxn = await msevaService.verifyPayment(txn.txnId);
+      const verifiedTxn = await msevaService.verifyPayment(txn.txnId, bill);
       setIsPaying(false);
-      let successMsg = `Payment of ₹${verifiedTxn.txnAmount.toLocaleString("en-IN")} completed successfully via ${verifiedTxn.gateway} Gateway! Your official MSeva receipt has been generated.`;
-      if (conversationLanguage === "hindi") {
-        successMsg = `₹${verifiedTxn.txnAmount.toLocaleString("en-IN")} का भुगतान ${verifiedTxn.gateway} गेटवे के माध्यम से सफलतापूर्वक संपन्न हुआ! आपकी आधिकारिक MSeva रसीद जारी कर दी गई है।`;
-      } else if (conversationLanguage === "hinglish") {
-        successMsg = `₹${verifiedTxn.txnAmount.toLocaleString("en-IN")} ka payment ${verifiedTxn.gateway} Gateway se successfully complete ho gaya! Aapki official MSeva receipt generate ho gayi hai.`;
-      } else if (conversationLanguage === "punjabi") {
-        successMsg = `₹${verifiedTxn.txnAmount.toLocaleString("en-IN")} ਦਾ ਭੁਗਤਾਨ ${verifiedTxn.gateway} ਗੇਟਵੇ ਰਾਹੀਂ ਸਫਲਤਾਪੂਰਵਕ ਮੁਕੰਮਲ ਹੋ ਗਿਆ ਹੈ! ਤੁਹਾਡੀ ਅਧਿਕਾਰਤ MSeva ਰਸੀਦ ਜਾਰੀ ਕਰ ਦਿੱਤੀ ਗਈ ਹੈ।`;
-      }
+
+      // 3. Display payment confirmation message along with the Transaction ID
+      const confirmationMsg = languageService.getPaymentConfirmationMessage(
+        conversationLanguage,
+        verifiedTxn.txnId,
+        verifiedTxn.txnAmount.toLocaleString("en-IN"),
+        verifiedTxn.gateway
+      );
+
+      // 4. Post-Payment Notification
+      const postPaymentMsg = languageService.getPostPaymentNotification(conversationLanguage);
 
       setMessages((prev) => [
         ...prev,
         {
           id: msgId++,
           role: "bot",
-          text: successMsg,
+          text: confirmationMsg,
           time: now(),
           card: {
             type: "payment_success",
             transaction: verifiedTxn,
+            bill,
+            property,
           },
         },
+        {
+          id: msgId++,
+          role: "bot",
+          text: postPaymentMsg,
+          time: now(),
+        },
       ]);
-    }, 1200);
+    }, 1400);
+  }
+
+  // Option to download payment receipt (Point 3)
+  function handleDownloadReceipt(transaction: PaymentTransaction, bill?: ConsolidatedBill, property?: PropertyRecord) {
+    const ownerList =
+      property?.owners && property.owners.length > 0
+        ? property.owners.map((o, idx) => `${idx + 1}. ${o.name}`).join("\n")
+        : citizen?.name
+        ? `1. ${citizen.name}`
+        : "1. Mr. Akash Kumar\n2. Mrs. Sunita Kumar";
+
+    const mobile = property?.owners?.[0]?.mobileNumber || citizen?.mobileNumber || "9123456789";
+    const address = property?.address?.doorNo
+      ? `${property.address.doorNo}, ${property.address.locality || property.address.street || "Civil Lines"}, ${property.address.city || "Kanpur Nagar"} - ${property.address.pincode || "208001"}`
+      : "21, Civil Lines, Kanpur Nagar - 208001";
+
+    const receiptText = `================================================================================
+                    GOVERNMENT OF PUNJAB / UPYOG
+                MUNICIPAL CORPORATION CITIZEN SERVICES
+                       OFFICIAL PAYMENT RECEIPT
+================================================================================
+Receipt Number:       ${transaction.receiptNumber || "PB_RCPT_2026_98234"}
+Transaction ID:       ${transaction.txnId}
+Transaction Status:   ${transaction.txnStatus} (SUCCESSFUL)
+Payment Date & Time:  ${transaction.paymentDate || new Date().toLocaleDateString("en-IN")}
+Payment Gateway:      ${transaction.gateway} Gateway (Portal Redirection)
+Payment Channel:      Online Citizen Portal Payment Gateway
+--------------------------------------------------------------------------------
+PROPERTY & CITIZEN DETAILS:
+Property ID (PTID):   ${transaction.consumerCode}
+Mobile Number:        ${mobile}
+Owner Name(s):
+${ownerList}
+Property Address:     ${address}
+Financial Year:       2025-2026
+--------------------------------------------------------------------------------
+DEMAND & ASSESSMENT BREAKDOWN:
+Current Demand:       ₹${(bill?.currentTaxDemand || 4500).toFixed(2)}
+Previous Arrears:     ₹${(bill?.arrears || 800).toFixed(2)}
+Late Fee / Penalty:   ₹${(bill?.penalty || 200).toFixed(2)}
+Fire Cess & Charges:  ₹${(bill?.fireCess || 100).toFixed(2)}
+--------------------------------------------------------------------------------
+TOTAL AMOUNT PAID:    ₹${transaction.txnAmount.toFixed(2)}
+--------------------------------------------------------------------------------
+Status: COMPLETED / PAID IN FULL
+
+POST-PAYMENT NOTIFICATION:
+You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.
+================================================================================
+This is a computer-generated official receipt issued by the Municipal Corporation.
+================================================================================`;
+
+    const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Payment-Receipt-${transaction.receiptNumber || transaction.txnId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // Use Case 2: Citizen Confirms UID Linking ("Yes")
@@ -1487,6 +1640,8 @@ export default function App() {
                           placeholder: string;
                           testHint: string;
                           testVal: string;
+                          workflowHint?: string;
+                          workflowVal?: string;
                         }> = isWaterCard
                           ? [
                               {
@@ -1516,8 +1671,10 @@ export default function App() {
                                 key: "ptid",
                                 label: cardLabels.optPtid,
                                 placeholder: cardLabels.placeholderPtid,
-                                testHint: "Use test PTID: KNP-123-456-78",
+                                testHint: "Use test PTID (Active): KNP-123-456-78",
                                 testVal: "KNP-123-456-78",
+                                workflowHint: "Test PTID (In Workflow): KNP-999-000-11",
+                                workflowVal: "KNP-999-000-11",
                               },
                               {
                                 key: "mobile",
@@ -1665,16 +1822,30 @@ export default function App() {
                                 </p>
                               )}
                               {!authOtpSent && !authIdentifier && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAuthIdentifier(currentMethodConfig.testVal);
-                                    setAuthIdentifierError("");
-                                  }}
-                                  className="text-[10.5px] text-[#2563EB] hover:underline font-medium mt-1 block text-left cursor-pointer"
-                                >
-                                  {currentMethodConfig.testHint}
-                                </button>
+                                <div className="mt-1 flex flex-col gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAuthIdentifier(currentMethodConfig.testVal);
+                                      setAuthIdentifierError("");
+                                    }}
+                                    className="text-[10.5px] text-[#2563EB] hover:underline font-medium text-left cursor-pointer"
+                                  >
+                                    {currentMethodConfig.testHint}
+                                  </button>
+                                  {currentMethodConfig.workflowVal && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAuthIdentifier(currentMethodConfig.workflowVal!);
+                                        setAuthIdentifierError("");
+                                      }}
+                                      className="text-[10.5px] text-amber-700 hover:underline font-medium text-left cursor-pointer"
+                                    >
+                                      {currentMethodConfig.workflowHint}
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
 
@@ -1837,29 +2008,78 @@ export default function App() {
                           <button
                             type="button"
                             disabled={isPaying}
-                            onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill)}
+                            onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
                             className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
                           >
-                            {isPaying ? <span>Redirecting to MSeva Payment Gateway...</span> : <span>{cardLabels.payNow} ({selectedGateway})</span>}
+                            {isPaying ? (
+                              <span className="flex items-center gap-1.5">
+                                <svg className="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span>Redirecting to Payment Gateway...</span>
+                              </span>
+                            ) : (
+                              <span>{cardLabels.payNow} ({selectedGateway})</span>
+                            )}
                           </button>
                         </div>
                       )}
 
-                      {/* Payment Success Card */}
+                      {/* Payment Success Card (Payment Confirmation & Receipt Option) */}
                       {msg.card?.type === "payment_success" && msg.card.transaction && (
-                        <div className="bg-emerald-50/80 rounded-xl p-3 border border-emerald-200 text-xs flex flex-col gap-1.5">
-                          <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <circle cx="12" cy="12" r="10" />
-                              <path d="m9 12 2 2 4-4" />
+                        <div className="bg-emerald-50/90 rounded-2xl p-4 border border-emerald-200/90 text-xs flex flex-col gap-2.5 max-w-[325px] shadow-xs animate-fade-in">
+                          <div className="flex items-center justify-between border-b border-emerald-200/70 pb-2">
+                            <span className="flex items-center gap-1.5 text-emerald-800 font-bold text-[12px]">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="m9 12 2 2 4-4" />
+                              </svg>
+                              {cardLabels.paymentSuccessful} (SUCCESS)
+                            </span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
+                              Confirmed
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] text-emerald-950 space-y-1 bg-white/70 rounded-xl p-2.5 border border-emerald-100 font-mono">
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-800/80 font-sans">Transaction ID:</span>
+                              <span className="font-bold text-emerald-950">{msg.card.transaction.txnId}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-800/80 font-sans">Receipt No:</span>
+                              <span className="font-semibold text-emerald-950">{msg.card.transaction.receiptNumber}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-800/80 font-sans">Property / Code:</span>
+                              <span className="font-semibold text-emerald-950">{msg.card.transaction.consumerCode}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-emerald-800/80 font-sans">Gateway:</span>
+                              <span className="font-medium text-emerald-950 font-sans">{msg.card.transaction.gateway} PG (Portal)</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-1 border-t border-emerald-100">
+                              <span className="text-emerald-800 font-medium font-sans">Amount Paid:</span>
+                              <span className="text-[13px] font-bold text-emerald-900">
+                                ₹{msg.card.transaction.txnAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Download Payment Receipt Button (Point 3) */}
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadReceipt(msg.card!.transaction!, msg.card?.bill, msg.card?.property)}
+                            className="w-full py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
-                            Payment Successful
-                          </div>
-                          <div className="text-[11px] text-emerald-900 space-y-0.5">
-                            <p><span className="font-medium">Receipt No:</span> {msg.card.transaction.receiptNumber}</p>
-                            <p><span className="font-medium">Txn ID:</span> {msg.card.transaction.txnId}</p>
-                            <p><span className="font-medium">Amount Paid:</span> ₹{msg.card.transaction.txnAmount.toFixed(2)}</p>
-                          </div>
+                            <span>{cardLabels.downloadReceipt || "Download Payment Receipt"}</span>
+                          </button>
                         </div>
                       )}
 
@@ -1885,8 +2105,18 @@ export default function App() {
                               <span className="font-mono font-bold text-slate-900">{msg.card.property.propertyId}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="font-semibold text-slate-600">Owner Name:</span>
-                              <span className="font-medium text-slate-900">{msg.card.property.owners[0].name}</span>
+                              <span className="font-semibold text-slate-600">
+                                {msg.card.property.owners && msg.card.property.owners.length > 1 ? "Owner Names:" : "Owner Name:"}
+                              </span>
+                              <span className="font-medium text-slate-900 text-right">
+                                {msg.card.property.owners && msg.card.property.owners.length > 1
+                                  ? msg.card.property.owners.map((o) => o.name).join(", ")
+                                  : msg.card.property.owners[0].name}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-semibold text-slate-600">Mobile No:</span>
+                              <span className="font-mono text-slate-900">{msg.card.property.owners[0].mobileNumber}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="font-semibold text-slate-600">Property Address:</span>
