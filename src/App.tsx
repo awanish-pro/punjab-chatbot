@@ -2808,108 +2808,172 @@ export default function App() {
               )}
 
               {/* Bottom Message Box matching Screenshot */}
-              <div className="w-full bg-white rounded-[18px] border border-slate-200 shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-3 flex flex-col justify-between transition-all focus-within:border-blue-500/80 focus-within:ring-1 focus-within:ring-blue-500/30">
-                {/* Listening Alert / Indicator */}
-                {isListening && (
-                  <div className="flex items-center justify-between bg-rose-50 border border-rose-200/80 text-rose-700 px-3 py-1.5 rounded-xl text-xs mb-2 animate-pulse">
-                    <span className="flex items-center gap-1.5 font-medium text-[11.5px]">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block" />
-                      {cardLabels.micListeningPrompt || "Listening... Speak your query now"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (recognitionRef.current) recognitionRef.current.stop();
-                      }}
-                      className="text-[11px] font-semibold text-rose-800 underline cursor-pointer"
-                    >
-                      Done / Ask
-                    </button>
+              <div
+                className={`w-full bg-white rounded-[18px] border shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-3 flex flex-col justify-between transition-all ${
+                  isListening
+                    ? "border-slate-300/90 ring-1 ring-slate-200/60"
+                    : "border-slate-200 focus-within:border-blue-500/80 focus-within:ring-1 focus-within:ring-blue-500/30"
+                }`}
+              >
+                {isListening ? (
+                  /* ChatGPT Style Voice Wavelength Mode */
+                  <div className="w-full flex flex-col justify-center min-h-[58px] py-1 animate-fade-in select-none">
+                    {/* Live speech preview if user is speaking */}
+                    {input.trim() ? (
+                      <p className="text-[12.5px] text-slate-800 font-medium px-1 mb-1.5 truncate animate-fade-in">
+                        {input}
+                      </p>
+                    ) : (
+                      <p className="text-[11.5px] text-slate-400 font-normal px-1 mb-1.5 select-none">
+                        Listening...
+                      </p>
+                    )}
+
+                    {/* Horizontal Line Wavelength Bar matching ChatGPT */}
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <div className="flex-1 flex items-center h-8 overflow-hidden relative select-none">
+                        {/* Left dotted baseline track */}
+                        <div className="flex-1 flex items-center justify-evenly gap-[4px] opacity-75 overflow-hidden pr-1">
+                          {Array.from({ length: 44 }).map((_, i) => (
+                            <span
+                              key={`dot-${i}`}
+                              className="w-[2.5px] h-[2.5px] rounded-full bg-slate-300 flex-shrink-0"
+                            />
+                          ))}
+                        </div>
+
+                        {/* Animated ChatGPT Audio Wavelength Bars */}
+                        <div className="flex items-center gap-[3px] px-1 flex-shrink-0">
+                          {[
+                            { h: 6, dur: "0.65s", del: "0.05s" },
+                            { h: 11, dur: "0.85s", del: "0.2s" },
+                            { h: 17, dur: "0.7s", del: "0.1s" },
+                            { h: 25, dur: "0.9s", del: "0.35s" },
+                            { h: 15, dur: "0.75s", del: "0.15s" },
+                            { h: 22, dur: "0.8s", del: "0.25s" },
+                            { h: 28, dur: "0.95s", del: "0.12s" },
+                            { h: 19, dur: "0.6s", del: "0.4s" },
+                            { h: 13, dur: "0.7s", del: "0.3s" },
+                            { h: 21, dur: "0.85s", del: "0.18s" },
+                            { h: 16, dur: "0.65s", del: "0.45s" },
+                            { h: 8, dur: "0.75s", del: "0.22s" },
+                          ].map((bar, idx) => (
+                            <span
+                              key={`bar-${idx}`}
+                              className="w-[3px] rounded-full bg-slate-700 chatgpt-wave-bar"
+                              style={{
+                                height: `${bar.h}px`,
+                                animation: `chatgpt-wave-osc ${bar.dur} ease-in-out infinite alternate`,
+                                animationDelay: bar.del,
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Right tail dots */}
+                        <div className="flex items-center gap-[4px] opacity-75 overflow-hidden pl-1">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <span
+                              key={`rdot-${i}`}
+                              className="w-[2.5px] h-[2.5px] rounded-full bg-slate-300 flex-shrink-0"
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Pause button in place of mic */}
+                      <button
+                        type="button"
+                        onClick={handleVoiceInput}
+                        className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] active:scale-95 border border-[#e5e7eb] text-slate-800 flex items-center justify-center transition-all cursor-pointer shadow-2xs flex-shrink-0"
+                        title="Pause recording"
+                        aria-label="Pause recording"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#1f2937">
+                          <rect x="5.5" y="4" width="4" height="16" rx="1.5" />
+                          <rect x="14.5" y="4" width="4" height="16" rx="1.5" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                {/* Multiline Textarea: Shift+Enter or Alt+Enter/Option+Enter for 2nd line */}
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleTextareaKeyDown}
-                  placeholder={
-                    isListening
-                      ? "Listening... please speak your query"
-                      : languageService.getInputPlaceholder(conversationLanguage)
-                  }
-                  className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent resize-none leading-relaxed overflow-y-auto max-h-[110px]"
-                />
-
-                {/* Bottom Action Toolbar inside the Box */}
-                <div className="flex items-center justify-between pt-3 pb-0.5 translate-y-[2px]">
-                  {/* Left: Camera icon + subtle shortcut hint */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded hover:bg-slate-50"
-                      title="Attach document or photo (Max 5MB)"
-                      aria-label="Camera"
-                    >
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                        <circle cx="12" cy="13" r="3" />
-                      </svg>
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*,.pdf"
-                      onChange={handleFileUpload}
+                ) : (
+                  <>
+                    {/* Multiline Textarea: Shift+Enter or Alt+Enter/Option+Enter for 2nd line */}
+                    <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleTextareaKeyDown}
+                      placeholder={languageService.getInputPlaceholder(conversationLanguage)}
+                      className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent resize-none leading-relaxed overflow-y-auto max-h-[110px]"
                     />
-                    <span className="text-[10.5px] text-slate-400 select-none hidden sm:inline" title="Shift + Enter to jump to second line">
-                      Shift+Enter ↵
-                    </span>
-                  </div>
 
-                  {/* Right: Microphone + Send Button */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleVoiceInput}
-                      className={`p-1.5 transition-all cursor-pointer rounded-full ${
-                        isListening
-                          ? "bg-rose-500 text-white shadow-md shadow-rose-500/40 animate-pulse ring-2 ring-rose-300"
-                          : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-                      }`}
-                      title={isListening ? "Listening... Tap to finish and ask" : "Ask query by voice (Microphone)"}
-                      aria-label="Microphone"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                        <line x1="12" x2="12" y1="19" y2="22" />
-                      </svg>
-                    </button>
+                    {/* Bottom Action Toolbar inside the Box */}
+                    <div className="flex items-center justify-between pt-3 pb-0.5 translate-y-[2px]">
+                      {/* Left: Camera icon + subtle shortcut hint */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded hover:bg-slate-50"
+                          title="Attach document or photo (Max 5MB)"
+                          aria-label="Camera"
+                        >
+                          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                            <circle cx="12" cy="13" r="3" />
+                          </svg>
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          className="hidden"
+                          accept="image/*,.pdf"
+                          onChange={handleFileUpload}
+                        />
+                        <span className="text-[10.5px] text-slate-400 select-none hidden sm:inline" title="Shift + Enter to jump to second line">
+                          Shift+Enter ↵
+                        </span>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={() => input.trim() && !typing && handleSend(input.trim())}
-                      disabled={!input.trim() || typing}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        input.trim() && !typing
-                          ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer active:scale-95"
-                          : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                      }`}
-                      title={input.trim() ? "Send message (Enter)" : "Type a message to send"}
-                      aria-label="Send message"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-0.5px] translate-y-[0.5px]">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                      {/* Right: Microphone + Send Button */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleVoiceInput}
+                          className="p-1.5 transition-all cursor-pointer rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                          title="Ask query by voice (Microphone)"
+                          aria-label="Microphone"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" x2="12" y1="19" y2="22" />
+                          </svg>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => input.trim() && !typing && handleSend(input.trim())}
+                          disabled={!input.trim() || typing}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                            input.trim() && !typing
+                              ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer active:scale-95"
+                              : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                          }`}
+                          title={input.trim() ? "Send message (Enter)" : "Type a message to send"}
+                          aria-label="Send message"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-0.5px] translate-y-[0.5px]">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
