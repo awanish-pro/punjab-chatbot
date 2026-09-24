@@ -2026,54 +2026,59 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                         </div>
                       )}
 
-                      {/* Payment Success Card (Payment Confirmation & Receipt Option) */}
+                      {/* Payment Success Card (Minimal & Simple Card) */}
                       {msg.card?.type === "payment_success" && msg.card.transaction && (
-                        <div className="bg-emerald-50/90 rounded-2xl p-4 border border-emerald-200/90 text-xs flex flex-col gap-2.5 max-w-[325px] shadow-xs animate-fade-in">
-                          <div className="flex items-center justify-between border-b border-emerald-200/70 pb-2">
-                            <span className="flex items-center gap-1.5 text-emerald-800 font-bold text-[12px]">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="m9 12 2 2 4-4" />
-                              </svg>
-                              {cardLabels.paymentSuccessful} (SUCCESS)
+                        <div className="bg-white rounded-2xl p-4 border border-neutral-200/90 text-xs flex flex-col gap-3 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                          {/* 1. Header: Single-line title and status badge without checkicon or (SUCCESS) */}
+                          <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+                            <span className="text-[13px] font-medium text-neutral-900 tracking-tight leading-none">
+                              {cardLabels.paymentSuccessful}
                             </span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50/90 border border-emerald-200/60 px-2 py-0.5 rounded-md leading-none">
                               Confirmed
                             </span>
                           </div>
 
-                          <div className="text-[11px] text-emerald-950 space-y-1 bg-white/70 rounded-xl p-2.5 border border-emerald-100 font-mono">
-                            <div className="flex justify-between items-center">
-                              <span className="text-emerald-800/80 font-sans">Transaction ID:</span>
-                              <span className="font-bold text-emerald-950">{msg.card.transaction.txnId}</span>
+                          {/* 2. Transaction Details List */}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center text-[11.5px]">
+                              <span className="text-neutral-500 font-normal">Transaction ID</span>
+                              <span className="font-mono text-neutral-800 font-medium">{msg.card.transaction.txnId}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-emerald-800/80 font-sans">Receipt No:</span>
-                              <span className="font-semibold text-emerald-950">{msg.card.transaction.receiptNumber}</span>
+
+                            <div className="flex justify-between items-center text-[11.5px]">
+                              <span className="text-neutral-500 font-normal">Receipt No</span>
+                              <span className="font-mono text-neutral-800 font-medium">{msg.card.transaction.receiptNumber}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-emerald-800/80 font-sans">Property / Code:</span>
-                              <span className="font-semibold text-emerald-950">{msg.card.transaction.consumerCode}</span>
+
+                            <div className="flex justify-between items-center text-[11.5px]">
+                              <span className="text-neutral-500 font-normal">Property ID</span>
+                              <span className="font-mono text-neutral-800 font-medium">{msg.card.transaction.consumerCode}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-emerald-800/80 font-sans">Gateway:</span>
-                              <span className="font-medium text-emerald-950 font-sans">{msg.card.transaction.gateway} PG (Portal)</span>
+
+                            <div className="flex justify-between items-center text-[11.5px]">
+                              <span className="text-neutral-500 font-normal">Payment Gateway</span>
+                              <span className="text-neutral-800 font-medium">{msg.card.transaction.gateway} PG</span>
                             </div>
-                            <div className="flex justify-between items-center pt-1 border-t border-emerald-100">
-                              <span className="text-emerald-800 font-medium font-sans">Amount Paid:</span>
-                              <span className="text-[13px] font-bold text-emerald-900">
+
+                            {/* Divider */}
+                            <div className="border-t border-dashed border-neutral-200 my-0.5" />
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-[12px] text-neutral-600 font-normal">Amount Paid</span>
+                              <span className="text-[15px] font-mono font-bold text-neutral-900">
                                 ₹{msg.card.transaction.txnAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                               </span>
                             </div>
                           </div>
 
-                          {/* Download Payment Receipt Button (Point 3) */}
+                          {/* 3. Download Payment Receipt CTA */}
                           <button
                             type="button"
                             onClick={() => handleDownloadReceipt(msg.card!.transaction!, msg.card?.bill, msg.card?.property)}
-                            className="w-full py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="w-full mt-0.5 py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="7 10 12 15 17 10" />
                               <line x1="12" y1="15" x2="12" y2="3" />
