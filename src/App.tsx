@@ -465,7 +465,7 @@ function BillReceiptCard({
 type VerificationMethod = "uid" | "ptid" | "mobile" | "water_consumer" | "sewerage_consumer";
 
 interface MessageCardData {
-  type?: "auth_card" | "property_details" | "bill_dues" | "payment_modal" | "payment_success" | "uid_linking" | "mismatch_logged";
+  type?: "auth_card" | "property_details" | "bill_dues" | "payment_modal" | "payment_success" | "payment_failed" | "uid_linking" | "mismatch_logged" | "empty_state";
   property?: PropertyRecord;
   bill?: ConsolidatedBill;
   water?: WaterConnection;
@@ -511,6 +511,12 @@ export default function App() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [pendingIntent, setPendingIntent] = useState<string | null>(null);
 
+  // Production UX Audit States: Offline, Reset Confirmation, Errors
+  const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [speechError, setSpeechError] = useState("");
+  const [fileError, setFileError] = useState("");
+
   // Chat message state: starts empty on first visit or revisit
   const [messages, setMessages] = useState<Message[]>([]);
   const [textFinishedIds, setTextFinishedIds] = useState<Set<number>>(new Set());
@@ -523,6 +529,29 @@ export default function App() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Network connectivity status tracking
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Back button navigation handling (close widget rather than navigating host page away)
+  useEffect(() => {
+    const onPopState = () => {
+      if (open) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [open]);
+
   useEffect(() => {
     if (open) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -530,6 +559,10 @@ export default function App() {
   }, [messages, open, typing, authOtpSent]);
 
   function handleReset() {
+    setShowResetConfirm(true);
+  }
+
+  function handleExecuteReset() {
     setCitizen(null);
     setSelectedVerificationMethod("uid");
     setAuthIdentifier("");
@@ -542,6 +575,7 @@ export default function App() {
     setConversationLanguage("english");
     setMessages([]);
     setTextFinishedIds(new Set());
+    setShowResetConfirm(false);
   }
 
   function handleDownload() {
@@ -598,33 +632,38 @@ export default function App() {
 
     setAuthIdentifierError("");
     setIsSendingOtp(true);
-    // Step 4 – Retrieve & Verify Details through MSeva API
-    const preview = await msevaService.verifyIdentifierPreview(selectedVerificationMethod, val);
+    try {
+      // Step 4 – Retrieve & Verify Details through MSeva API
+      const preview = await msevaService.verifyIdentifierPreview(selectedVerificationMethod, val);
 
-    if (preview.isWorkflow) {
+      if (preview.isWorkflow) {
+        const workflowMsg = languageService.getWorkflowPtidMessage(conversationLanguage);
+        setAuthIdentifierError(workflowMsg);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: workflowMsg,
+            time: now(),
+          },
+        ]);
+        return;
+      }
+
+      setIdentifiedPreview(preview);
+
+      // Step 5 – OTP Verification: Assistant sends OTP to registered mobile number
+      await msevaService.sendLoginOtp(val);
+      setAuthOtpSent(true);
+      setAuthOtp("");
+      setAuthOtpError("");
+    } catch (err) {
+      console.error("Error sending OTP:", err);
+      setAuthIdentifierError("Failed to reach verification server. Please check your network and retry.");
+    } finally {
       setIsSendingOtp(false);
-      const workflowMsg = languageService.getWorkflowPtidMessage(conversationLanguage);
-      setAuthIdentifierError(workflowMsg);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: workflowMsg,
-          time: now(),
-        },
-      ]);
-      return;
     }
-
-    setIdentifiedPreview(preview);
-
-    // Step 5 – OTP Verification: Assistant sends OTP to registered mobile number
-    await msevaService.sendLoginOtp(val);
-    setIsSendingOtp(false);
-    setAuthOtpSent(true);
-    setAuthOtp("");
-    setAuthOtpError("");
   }
 
   // Handle in-chat "Verify OTP" (Step 5)
@@ -649,18 +688,24 @@ export default function App() {
     }
 
     setIsVerifyingOtp(true);
-    const authResult = await msevaService.authenticateCitizen(authIdentifier.trim(), otpVal);
-    setIsVerifyingOtp(false);
+    try {
+      const authResult = await msevaService.authenticateCitizen(authIdentifier.trim(), otpVal);
 
-    if (authResult.success && authResult.user) {
-      setCitizen(authResult.user);
-      setAuthOtpError("");
+      if (authResult.success && authResult.user) {
+        setCitizen(authResult.user);
+        setAuthOtpError("");
 
-      // Fulfil the user's pending intent immediately (Step 6 & 7 / Use Case 2)
-      const intentToFulfill = activePendingIntent || pendingIntent;
-      fulfillIntentForVerifiedCitizen(authResult.user, intentToFulfill, conversationLanguage);
-    } else {
-      setAuthOtpError(cardLabels.invalidOtpRecovery);
+        // Fulfil the user's pending intent immediately (Step 6 & 7 / Use Case 2)
+        const intentToFulfill = activePendingIntent || pendingIntent;
+        await fulfillIntentForVerifiedCitizen(authResult.user, intentToFulfill, conversationLanguage);
+      } else {
+        setAuthOtpError(cardLabels.invalidOtpRecovery);
+      }
+    } catch (err) {
+      console.error("Error verifying OTP:", err);
+      setAuthOtpError("Network error while verifying OTP. Please retry.");
+    } finally {
+      setIsVerifyingOtp(false);
     }
   }
 
@@ -673,186 +718,239 @@ export default function App() {
     const lang = targetLang || conversationLanguage;
     setTyping(true);
 
-    if (intent === "property_tax" || intent === "pay_tax" || intent === "property_dues") {
-      const property = await msevaService.searchProperty({
-        mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
-        propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
-        uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
-      });
-      const bill = await msevaService.fetchBill(property?.propertyId || "PB-PT-2024-05-12-001234", "PT");
+    try {
+      if (intent === "property_tax" || intent === "pay_tax" || intent === "property_dues") {
+        const property = await msevaService.searchProperty({
+          mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
+          propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
+          uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
+        });
+
+        if (!property) {
+          setTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: msgId++,
+              role: "bot",
+              text: cardLabels.noPropertyFound(authIdentifier || user.mobileNumber),
+              time: now(),
+              card: {
+                type: "empty_state",
+              },
+            },
+          ]);
+          return;
+        }
+
+        const bill = await msevaService.fetchBill(property.propertyId, "PT");
+        setTyping(false);
+
+        const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_tax");
+        const duesText = cardLabels.outstandingPayPrompt(bill.totalAmount.toLocaleString("en-IN"));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: msgs.title,
+            time: now(),
+            card: {
+              type: "bill_dues",
+              property,
+              bill,
+            },
+          },
+          {
+            id: msgId++,
+            role: "bot",
+            text: duesText,
+            time: now(),
+            card: {
+              type: "payment_modal",
+              bill,
+              property,
+            },
+          },
+        ]);
+      } else if (intent === "property_details") {
+        const property = await msevaService.searchProperty({
+          mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
+          propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
+          uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
+        });
+
+        if (!property) {
+          setTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: msgId++,
+              role: "bot",
+              text: cardLabels.noPropertyFound(authIdentifier || user.mobileNumber),
+              time: now(),
+              card: {
+                type: "empty_state",
+              },
+            },
+          ]);
+          return;
+        }
+
+        const bill = await msevaService.fetchBill(property.propertyId, "PT");
+        setTyping(false);
+
+        const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_details");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: msgs.title,
+            time: now(),
+            card: {
+              type: "property_details",
+              property,
+              bill,
+            },
+          },
+        ]);
+      } else if (intent === "water_bill" || intent === "water_dues") {
+        const water = await msevaService.searchWater(
+          selectedVerificationMethod === "water_consumer" ? authIdentifier : undefined
+        );
+        const sewerage = await msevaService.searchSewerage(
+          selectedVerificationMethod === "sewerage_consumer" ? authIdentifier : undefined
+        );
+        const waterBill = await msevaService.fetchBill(water.connectionNumber, "WS");
+        setTyping(false);
+
+        const msgs = languageService.getAuthSuccessMessage(lang, user.name, "water_bill");
+        const waterDuesText = cardLabels.outstandingPayPrompt(waterBill.totalAmount.toLocaleString("en-IN"));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: msgs.title,
+            time: now(),
+            card: {
+              type: "bill_dues",
+              water,
+              sewerage,
+              bill: waterBill,
+            },
+          },
+          {
+            id: msgId++,
+            role: "bot",
+            text: waterDuesText,
+            time: now(),
+            card: {
+              type: "payment_modal",
+              bill: waterBill,
+            },
+          },
+        ]);
+      } else if (intent === "outstanding_dues") {
+        const property = await msevaService.searchProperty({ mobileNumber: user.mobileNumber });
+        const ptBill = await msevaService.fetchBill(property?.propertyId || "PB-PT-2024-05-12-001234", "PT");
+        const water = await msevaService.searchWater();
+        const wsBill = await msevaService.fetchBill(water.connectionNumber, "WS");
+        setTyping(false);
+
+        const totalOutstanding = ptBill.totalAmount + wsBill.totalAmount;
+        const msgs = languageService.getAuthSuccessMessage(lang, user.name, "outstanding_dues");
+
+        const consolidatedBill: ConsolidatedBill = {
+          billId: "PB-CONS-2024-09-001",
+          consumerCode: user.mobileNumber,
+          businessService: "MUNICIPAL_CONSOLIDATED",
+          totalAmount: totalOutstanding,
+          dueDate: "30-Sep-2024",
+          status: "ACTIVE",
+          tenantId: "pb.amritsar",
+          demandBreakdown: [
+            { taxHeadCode: "PT", title: "Property Tax Outstanding (PB-PT-2024-05-12-001234)", taxAmount: ptBill.totalAmount },
+            { taxHeadCode: "WS", title: "Water & Sewerage Charges (WC-2024-0042)", taxAmount: wsBill.totalAmount },
+          ],
+        };
+
+        const duesPrompt = cardLabels.outstandingPayPrompt(totalOutstanding.toLocaleString("en-IN"));
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: msgs.title,
+            time: now(),
+            card: {
+              type: "bill_dues",
+              bill: consolidatedBill,
+            },
+          },
+          {
+            id: msgId++,
+            role: "bot",
+            text: duesPrompt,
+            time: now(),
+            card: {
+              type: "payment_modal",
+              bill: consolidatedBill,
+            },
+          },
+        ]);
+      } else if (intent === "uid_linking") {
+        const property = await msevaService.searchProperty({
+          mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
+          propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
+          uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
+        });
+        setTyping(false);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: cardLabels.uidMatchingPrompt(user.uuid || "u123-abc-789"),
+            time: now(),
+            card: {
+              type: "uid_linking",
+              property: property || undefined,
+            },
+          },
+        ]);
+      } else {
+        setTyping(false);
+        const msgs = languageService.getAuthSuccessMessage(lang, user.name, "general");
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msgId++,
+            role: "bot",
+            text: msgs.title,
+            time: now(),
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Intent fulfillment error:", err);
       setTyping(false);
-
-      const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_tax");
-      const duesText = cardLabels.outstandingPayPrompt(bill.totalAmount.toLocaleString("en-IN"));
-
       setMessages((prev) => [
         ...prev,
         {
           id: msgId++,
           role: "bot",
-          text: msgs.title,
+          text: "We encountered a temporary network issue retrieving municipal records. Please check your connection and retry.",
           time: now(),
-          card: {
-            type: "bill_dues",
-            property: property || undefined,
-            bill,
-          },
-        },
-        {
-          id: msgId++,
-          role: "bot",
-          text: duesText,
-          time: now(),
-          card: {
-            type: "payment_modal",
-            bill,
-          },
         },
       ]);
-    } else if (intent === "property_details") {
-      const property = await msevaService.searchProperty({
-        mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
-        propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
-        uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
-      });
-      const bill = await msevaService.fetchBill(property?.propertyId || "PB-PT-2024-05-12-001234", "PT");
+    } finally {
       setTyping(false);
-
-      const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_details");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: msgs.title,
-          time: now(),
-          card: {
-            type: "property_details",
-            property: property || undefined,
-            bill,
-          },
-        },
-      ]);
-    } else if (intent === "water_bill" || intent === "water_dues") {
-      const water = await msevaService.searchWater(
-        selectedVerificationMethod === "water_consumer" ? authIdentifier : undefined
-      );
-      const sewerage = await msevaService.searchSewerage(
-        selectedVerificationMethod === "sewerage_consumer" ? authIdentifier : undefined
-      );
-      const waterBill = await msevaService.fetchBill(water.connectionNumber, "WS");
-      setTyping(false);
-
-      const msgs = languageService.getAuthSuccessMessage(lang, user.name, "water_bill");
-      const waterDuesText = cardLabels.outstandingPayPrompt(waterBill.totalAmount.toLocaleString("en-IN"));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: msgs.title,
-          time: now(),
-          card: {
-            type: "bill_dues",
-            water,
-            sewerage,
-            bill: waterBill,
-          },
-        },
-        {
-          id: msgId++,
-          role: "bot",
-          text: waterDuesText,
-          time: now(),
-          card: {
-            type: "payment_modal",
-            bill: waterBill,
-          },
-        },
-      ]);
-    } else if (intent === "outstanding_dues") {
-      const property = await msevaService.searchProperty({ mobileNumber: user.mobileNumber });
-      const ptBill = await msevaService.fetchBill(property?.propertyId || "PB-PT-2024-05-12-001234", "PT");
-      const water = await msevaService.searchWater();
-      const wsBill = await msevaService.fetchBill(water.connectionNumber, "WS");
-      setTyping(false);
-
-      const totalOutstanding = ptBill.totalAmount + wsBill.totalAmount;
-      const msgs = languageService.getAuthSuccessMessage(lang, user.name, "outstanding_dues");
-
-      const consolidatedBill: ConsolidatedBill = {
-        billId: "PB-CONS-2024-09-001",
-        consumerCode: user.mobileNumber,
-        businessService: "MUNICIPAL_CONSOLIDATED",
-        totalAmount: totalOutstanding,
-        dueDate: "30-Sep-2024",
-        status: "ACTIVE",
-        tenantId: "pb.amritsar",
-        demandBreakdown: [
-          { taxHeadCode: "PT", title: "Property Tax Outstanding (PB-PT-2024-05-12-001234)", taxAmount: ptBill.totalAmount },
-          { taxHeadCode: "WS", title: "Water & Sewerage Charges (WC-2024-0042)", taxAmount: wsBill.totalAmount },
-        ],
-      };
-
-      const duesPrompt = cardLabels.outstandingPayPrompt(totalOutstanding.toLocaleString("en-IN"));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: msgs.title,
-          time: now(),
-          card: {
-            type: "bill_dues",
-            bill: consolidatedBill,
-          },
-        },
-        {
-          id: msgId++,
-          role: "bot",
-          text: duesPrompt,
-          time: now(),
-          card: {
-            type: "payment_modal",
-            bill: consolidatedBill,
-          },
-        },
-      ]);
-    } else if (intent === "uid_linking") {
-      const property = await msevaService.searchProperty({
-        mobileNumber: selectedVerificationMethod === "mobile" ? authIdentifier : user.mobileNumber,
-        propertyId: selectedVerificationMethod === "ptid" ? authIdentifier : undefined,
-        uuid: selectedVerificationMethod === "uid" ? authIdentifier : undefined,
-      });
-      setTyping(false);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: cardLabels.uidMatchingPrompt(user.uuid || "u123-abc-789"),
-          time: now(),
-          card: {
-            type: "uid_linking",
-            property: property || undefined,
-          },
-        },
-      ]);
-    } else {
-      setTyping(false);
-      const msgs = languageService.getAuthSuccessMessage(lang, user.name, "general");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msgId++,
-          role: "bot",
-          text: msgs.title,
-          time: now(),
-        },
-      ]);
     }
   }
 
@@ -1355,53 +1453,182 @@ export default function App() {
   // Payment Handoff (Section 4.7)
   async function handleInitiatePayment(bill: ConsolidatedBill, property?: PropertyRecord) {
     setIsPaying(true);
-    const citizenName = property?.owners?.[0]?.name || citizen?.name || "Akash Kumar";
-    const txn = await msevaService.createPaymentTransaction(bill, selectedGateway, citizenName);
-
-    // 3. Citizen is redirected to the portal's payment gateway to complete the transaction
     try {
-      window.open(txn.redirectUrl, "_blank", "noopener,noreferrer");
+      const citizenName = property?.owners?.[0]?.name || citizen?.name || "Akash Kumar";
+      const txn = await msevaService.createPaymentTransaction(bill, selectedGateway, citizenName);
+
+      // 3. Citizen is redirected to the portal's payment gateway to complete the transaction
+      try {
+        window.open(txn.redirectUrl, "_blank", "noopener,noreferrer");
+      } catch (err) {
+        console.warn("External gateway redirect open error:", err);
+      }
+
+      setTimeout(async () => {
+        try {
+          const verifiedTxn = await msevaService.verifyPayment(txn.txnId, bill);
+          setIsPaying(false);
+
+          if (verifiedTxn.txnStatus === "SUCCESS") {
+            const confirmationMsg = languageService.getPaymentConfirmationMessage(
+              conversationLanguage,
+              verifiedTxn.txnId,
+              verifiedTxn.txnAmount.toLocaleString("en-IN"),
+              verifiedTxn.gateway
+            );
+            const postPaymentMsg = languageService.getPostPaymentNotification(conversationLanguage);
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: msgId++,
+                role: "bot",
+                text: confirmationMsg,
+                time: now(),
+                card: {
+                  type: "payment_success",
+                  transaction: verifiedTxn,
+                  bill,
+                  property,
+                },
+              },
+              {
+                id: msgId++,
+                role: "bot",
+                text: postPaymentMsg,
+                time: now(),
+              },
+            ]);
+          } else {
+            // Payment Failure / Interrupted flow
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: msgId++,
+                role: "bot",
+                text: cardLabels.paymentCancelledMsg,
+                time: now(),
+                card: {
+                  type: "payment_failed",
+                  transaction: verifiedTxn,
+                  bill,
+                  property,
+                },
+              },
+            ]);
+          }
+        } catch (vErr) {
+          console.error("Payment verification error:", vErr);
+          setIsPaying(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: msgId++,
+              role: "bot",
+              text: cardLabels.paymentCancelledMsg,
+              time: now(),
+              card: {
+                type: "payment_failed",
+                bill,
+                property,
+              },
+            },
+          ]);
+        }
+      }, 1400);
     } catch (err) {
-      console.warn("External gateway redirect open error:", err);
-    }
-
-    setTimeout(async () => {
-      const verifiedTxn = await msevaService.verifyPayment(txn.txnId, bill);
+      console.error("Error creating payment transaction:", err);
       setIsPaying(false);
-
-      // 3. Display payment confirmation message along with the Transaction ID
-      const confirmationMsg = languageService.getPaymentConfirmationMessage(
-        conversationLanguage,
-        verifiedTxn.txnId,
-        verifiedTxn.txnAmount.toLocaleString("en-IN"),
-        verifiedTxn.gateway
-      );
-
-      // 4. Post-Payment Notification
-      const postPaymentMsg = languageService.getPostPaymentNotification(conversationLanguage);
-
       setMessages((prev) => [
         ...prev,
         {
           id: msgId++,
           role: "bot",
-          text: confirmationMsg,
-          time: now(),
-          card: {
-            type: "payment_success",
-            transaction: verifiedTxn,
-            bill,
-            property,
-          },
-        },
-        {
-          id: msgId++,
-          role: "bot",
-          text: postPaymentMsg,
+          text: "Payment gateway connection could not be established. Please check your network and retry.",
           time: now(),
         },
       ]);
-    }, 1400);
+    }
+  }
+
+  // Real Web Speech API & Microphone Handling with Permission Checks
+  function handleVoiceInput() {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setSpeechError(cardLabels.micNotSupported);
+      setTimeout(() => setSpeechError(""), 3500);
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang =
+        conversationLanguage === "hindi"
+          ? "hi-IN"
+          : conversationLanguage === "punjabi"
+          ? "pa-IN"
+          : "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError("");
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) {
+          setInput(transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setSpeechError(cardLabels.micPermissionDenied);
+        } else {
+          setSpeechError(`Voice input: ${event.error}`);
+        }
+        setTimeout(() => setSpeechError(""), 4000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.warn("Speech recognition error:", e);
+      setIsListening(false);
+      setSpeechError(cardLabels.micNotSupported);
+      setTimeout(() => setSpeechError(""), 3500);
+    }
+  }
+
+  // File Upload Security & Size Constraints (Max 5MB)
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError(cardLabels.fileSizeExceeded);
+      setTimeout(() => setFileError(""), 4500);
+      e.target.value = "";
+      return;
+    }
+
+    setFileError("");
+    handleSend(`Uploaded document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    e.target.value = "";
   }
 
   // Option to download payment receipt (Point 3)
@@ -1550,7 +1777,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
       {open && (
         <div className="pointer-events-auto fixed bottom-[88px] right-6 w-[410px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-110px)] flex flex-col rounded-[28px] overflow-hidden chat-window-rainbow animate-slide-up bg-white">
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-slate-200/80 bg-[#F9FAFB] select-none">
+          <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-slate-200/80 bg-[#F9FAFB] select-none relative">
             {/* Left: Avatar + Titles */}
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 shadow-xs">
@@ -1598,6 +1825,75 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
               </button>
             </div>
           </div>
+
+          {/* Offline Banner */}
+          {!isOnline && (
+            <div className="bg-amber-600 text-white text-[11px] font-medium px-4 py-1.5 flex items-center justify-between shadow-xs animate-fade-in z-20">
+              <div className="flex items-center gap-1.5">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+                  <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+                  <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
+                  <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                  <line x1="12" y1="20" x2="12.01" y2="20" />
+                </svg>
+                <span>{cardLabels.offlineAlert}</span>
+              </div>
+              <span className="text-[9.5px] uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded font-mono">Offline</span>
+            </div>
+          )}
+
+          {/* Speech or File Error Alert Banner */}
+          {(speechError || fileError) && (
+            <div className="mx-4 mt-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-[11px] font-medium flex items-center justify-between animate-fade-in shadow-xs z-20">
+              <span>{speechError || fileError}</span>
+              <button
+                type="button"
+                onClick={() => { setSpeechError(""); setFileError(""); }}
+                className="text-rose-400 hover:text-rose-700 text-xs font-bold ml-2 cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {/* Reset Confirmation Modal Overlay */}
+          {showResetConfirm && (
+            <div className="absolute inset-0 bg-slate-900/35 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+              <div className="bg-white rounded-2xl p-4 shadow-xl border border-slate-200 max-w-[285px] w-full text-center flex flex-col gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 text-amber-600 mx-auto flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M3 21v-5h5" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800">{cardLabels.resetConfirmTitle}</h3>
+                <p className="text-[11px] text-slate-500 leading-snug">{cardLabels.resetConfirmDesc}</p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(false)}
+                    style={{ fontWeight: 500 }}
+                    className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-xs transition-colors cursor-pointer"
+                  >
+                    {cardLabels.cancelAction}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteReset}
+                    style={{ fontWeight: 500 }}
+                    className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg text-xs transition-colors cursor-pointer shadow-xs"
+                  >
+                    {cardLabels.resetConfirmAction}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Body: Direct Conversational Interface */}
           <div className="flex-1 bg-white flex flex-col overflow-hidden justify-between">
@@ -2115,6 +2411,86 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                         </div>
                       )}
 
+                      {/* Payment Failed / Interrupted Card */}
+                      {msg.card?.type === "payment_failed" && (
+                        <div className="bg-white rounded-2xl p-4 border border-rose-200/90 text-xs flex flex-col gap-2.5 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                          <div className="flex items-center justify-between pb-2 border-b border-rose-100">
+                            <span className="text-[13px] font-medium text-rose-700 tracking-tight leading-none">
+                              {cardLabels.paymentFailedTitle}
+                            </span>
+                            <span className="text-[10px] font-medium text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-md leading-none">
+                              Declined / Cancelled
+                            </span>
+                          </div>
+
+                          <p className="text-[11.5px] text-neutral-600 leading-snug">
+                            {cardLabels.paymentCancelledMsg}
+                          </p>
+
+                          {msg.card.transaction && (
+                            <div className="bg-rose-50/50 rounded-xl p-2.5 border border-rose-100 flex flex-col gap-1 text-[11px]">
+                              <div className="flex justify-between">
+                                <span className="text-neutral-500 font-normal">Reference ID</span>
+                                <span className="font-mono text-neutral-800 font-medium">{msg.card.transaction.txnId}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-neutral-500 font-normal">Amount</span>
+                                <span className="font-mono font-medium text-neutral-900">₹{msg.card.transaction.txnAmount.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card?.property)}
+                            style={{ fontWeight: 500 }}
+                            className="w-full mt-1 py-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <span className="font-medium" style={{ fontWeight: 500 }}>{cardLabels.retryPayment}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Empty Property Results Card */}
+                      {msg.card?.type === "empty_state" && (
+                        <div className="bg-white rounded-2xl p-4 border border-amber-200/80 text-xs flex flex-col gap-2.5 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                          <div className="flex items-center gap-2 pb-2 border-b border-amber-100 text-amber-700 font-medium text-xs">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="11" cy="11" r="8" />
+                              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                              <line x1="8" y1="11" x2="14" y2="11" />
+                            </svg>
+                            <span>No Records Found</span>
+                          </div>
+                          <p className="text-[11.5px] text-neutral-600 leading-relaxed">
+                            No active municipal tax demand record was found for this identifier in the mSeva database.
+                          </p>
+                          <div className="flex flex-col gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedVerificationMethod("mobile");
+                                setAuthIdentifier("");
+                                setAuthOtpSent(false);
+                                setIdentifiedPreview(null);
+                              }}
+                              style={{ fontWeight: 500 }}
+                              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition-colors cursor-pointer text-center"
+                            >
+                              Search by Registered Mobile
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSend("How to register property in Punjab")}
+                              style={{ fontWeight: 500 }}
+                              className="w-full py-2 bg-white border border-slate-200 hover:bg-slate-50 text-[#2563EB] font-medium rounded-xl text-xs transition-colors cursor-pointer text-center"
+                            >
+                              Learn How to Register Property
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* UID - PTID Linking Card (Use Case 2) */}
                       {msg.card?.type === "uid_linking" && msg.card.property && (
                         <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs text-xs flex flex-col gap-2.5 animate-fade-in">
@@ -2243,15 +2619,16 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
 
             {/* Bottom Section: Predefined Question Chips + Message Box */}
             <div className="px-4 pb-4 pt-1 bg-white select-none flex flex-col gap-2.5">
-              {/* Predefined Question Chips (Positioned just above the message box; hidden once user starts chatting) */}
-              {messages.length === 0 && (
+              {/* Predefined Question Chips (Available on empty or general fallback) */}
+              {(messages.length === 0 || messages[messages.length - 1]?.card?.type === "empty_state") && (
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 scroll-smooth animate-fade-in">
                   {chips.map((chip) => (
                     <button
                       key={chip}
                       type="button"
-                      onClick={() => handleSend(chip)}
-                      className="flex-shrink-0 bg-[#ebeef1] hover:bg-[#dfe3e8] active:scale-95 text-[#2d3748] text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap"
+                      disabled={typing}
+                      onClick={() => !typing && handleSend(chip)}
+                      className="flex-shrink-0 bg-[#ebeef1] hover:bg-[#dfe3e8] active:scale-95 text-[#2d3748] text-[12.5px] font-medium px-3.5 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {chip}
                     </button>
@@ -2265,14 +2642,21 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                 <input
                   type="text"
                   value={input}
+                  disabled={!isOnline}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && input.trim() && !typing) {
+                    if (e.key === "Enter" && input.trim() && !typing && isOnline) {
                       handleSend(input.trim());
                     }
                   }}
-                  placeholder={languageService.getInputPlaceholder(conversationLanguage)}
-                  className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent mb-3"
+                  placeholder={
+                    !isOnline
+                      ? "Offline - waiting for network connection..."
+                      : isListening
+                      ? "Listening... please speak now"
+                      : languageService.getInputPlaceholder(conversationLanguage)
+                  }
+                  className="w-full text-sm text-slate-800 placeholder:text-neutral-400 outline-none bg-transparent mb-3 disabled:placeholder:text-amber-600/70"
                 />
 
                 {/* Bottom Action Toolbar inside the Box */}
@@ -2282,7 +2666,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer rounded hover:bg-slate-50"
-                    title="Attach document or photo"
+                    title="Attach document or photo (Max 5MB)"
                     aria-label="Camera"
                   >
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2295,27 +2679,18 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                     ref={fileInputRef}
                     className="hidden"
                     accept="image/*,.pdf"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleSend(`Uploaded document: ${e.target.files[0].name}`);
-                      }
-                    }}
+                    onChange={handleFileUpload}
                   />
 
                   {/* Right: Microphone + Send Button */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsListening((v) => !v);
-                        if (!isListening && !input.trim()) {
-                          setInput("I want to know about property tax");
-                        }
-                      }}
+                      onClick={handleVoiceInput}
                       className={`p-1 transition-colors cursor-pointer rounded hover:bg-slate-50 ${
-                        isListening ? "text-rose-500 animate-pulse" : "text-slate-400 hover:text-slate-600"
+                        isListening ? "text-rose-500 animate-pulse bg-rose-50" : "text-slate-400 hover:text-slate-600"
                       }`}
-                      title={isListening ? "Listening..." : "Voice input"}
+                      title={isListening ? "Listening... Tap to stop" : "Voice input"}
                       aria-label="Microphone"
                     >
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2327,10 +2702,10 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
 
                     <button
                       type="button"
-                      onClick={() => input.trim() && handleSend(input.trim())}
-                      disabled={!input.trim() || typing}
+                      onClick={() => input.trim() && !typing && isOnline && handleSend(input.trim())}
+                      disabled={!input.trim() || typing || !isOnline}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        input.trim() && !typing
+                        input.trim() && !typing && isOnline
                           ? "bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer active:scale-95"
                           : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                       }`}

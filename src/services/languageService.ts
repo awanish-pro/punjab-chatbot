@@ -629,6 +629,18 @@ export class LanguageService {
           postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
           downloadReceipt: "भुगतान रसीद डाउनलोड करें",
           paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `भुगतान पुष्टि: लेन-देन आईडी (Transaction ID): ${txnId}। ₹${amt} का भुगतान ${gw} गेटवे के माध्यम से सफलतापूर्वक संपन्न हुआ।`,
+          resetConfirmTitle: "क्या आप बातचीत पुनः प्रारंभ करना चाहते हैं?",
+          resetConfirmDesc: "यह आपकी वर्तमान बातचीत और रसीद विवरण को साफ़ कर देगा।",
+          resetConfirmAction: "पुनः प्रारंभ करें",
+          cancelAction: "रद्द करें",
+          offlineAlert: "इंटरनेट कनेक्शन नहीं है। कृपया नेटवर्क जांचें।",
+          noPropertyFound: (id: string) => `दर्ज किए गए विवरण (${id}) के लिए कोई संपत्ति रिकॉर्ड नहीं मिला। कृपया अपना PTID/मोबाइल नंबर जांचें या नगर निगम कार्यालय से संपर्क करें।`,
+          fileSizeExceeded: "फ़ाइल का आकार 5MB की सीमा से अधिक है। कृपया 5MB से छोटी फ़ाइल अपलोड करें।",
+          micPermissionDenied: "माइक्रोफ़ोन अनुमति अस्वीकृत हो गई। कृपया ब्राउज़र सेटिंग्स में माइक्रोफ़ोन की अनुमति दें।",
+          micNotSupported: "इस ब्राउज़र में ध्वनि इनपुट समर्थित नहीं है। कृपया लिखकर संदेश भेजें।",
+          paymentFailedTitle: "भुगतान असफल रहा",
+          paymentCancelledMsg: "भुगतान प्रक्रिया रद्द या बाधित हो गई। आप दोबारा प्रयास कर सकते हैं।",
+          retryPayment: "पुनः भुगतान करें",
         };
       case "hinglish":
         return {
@@ -692,6 +704,18 @@ export class LanguageService {
           postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
           downloadReceipt: "Download Payment Receipt",
           paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `Payment confirmation: Transaction ID: ${txnId}. ₹${amt} ka payment ${gw} Gateway se successfully complete ho gaya.`,
+          resetConfirmTitle: "Chat reset karna chahte hain?",
+          resetConfirmDesc: "Isse aapki current conversation aur receipts clear ho jayenge.",
+          resetConfirmAction: "Restart Chat",
+          cancelAction: "Cancel",
+          offlineAlert: "No internet connection. Network check karein.",
+          noPropertyFound: (id: string) => `Details (${id}) ke liye koi property record nahi mila. Please PTID/mobile verify karein ya Municipal office se contact karein.`,
+          fileSizeExceeded: "File size 5MB limit se zyada hai. Please 5MB se choti file upload karein.",
+          micPermissionDenied: "Microphone permission denied. Browser settings mein mic allow karein.",
+          micNotSupported: "Voice input is browser mein supported nahi hai. Please text type karein.",
+          paymentFailedTitle: "Payment Failed",
+          paymentCancelledMsg: "Payment transaction cancel ya interrupt ho gaya. Aap dobara try kar sakte hain.",
+          retryPayment: "Retry Payment",
         };
       case "punjabi":
         return {
@@ -755,6 +779,18 @@ export class LanguageService {
           postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
           downloadReceipt: "ਭੁਗਤਾਨ ਰਸੀਦ ਡਾਊਨਲੋਡ ਕਰੋ",
           paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `ਭੁਗਤਾਨ ਪੁਸ਼ਟੀ: ਲੈਣ-ਦੇਣ ID (Transaction ID): ${txnId}। ₹${amt} ਦਾ ਭੁਗਤਾਨ ${gw} ਗੇਟਵੇ ਰਾਹੀਂ ਸਫਲਤਾਪੂਰਵਕ ਮੁਕੰਮਲ ਹੋ ਗਿਆ।`,
+          resetConfirmTitle: "ਕੀ ਤੁਸੀਂ ਗੱਲਬਾਤ ਦੁਬਾਰਾ ਸ਼ੁਰੂ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
+          resetConfirmDesc: "ਇਹ ਤੁਹਾਡੀ ਮੌਜੂਦਾ ਗੱਲਬਾਤ ਅਤੇ ਰਸੀਦਾਂ ਨੂੰ ਸਾਫ਼ ਕਰ ਦੇਵੇਗਾ।",
+          resetConfirmAction: "ਰੀਸਟਾਰਟ ਕਰੋ",
+          cancelAction: "ਰੱਦ ਕਰੋ",
+          offlineAlert: "ਕੋਈ ਇੰਟਰਨੈੱਟ ਕਨੈਕਸ਼ਨ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਨੈੱਟਵਰਕ ਚੈੱਕ ਕਰੋ।",
+          noPropertyFound: (id: string) => `ਵੇਰਵਿਆਂ (${id}) ਲਈ ਕੋਈ ਪ੍ਰਾਪਰਟੀ ਰਿਕਾਰਡ ਨਹੀਂ ਮਿਲਿਆ। ਕਿਰਪਾ ਕਰਕੇ PTID/ਮੋਬਾਈਲ ਚੈੱਕ ਕਰੋ ਜਾਂ ਨਗਰ ਨਿਗਮ ਦਫ਼ਤਰ ਨਾਲ ਸੰਪਰਕ ਕਰੋ।`,
+          fileSizeExceeded: "ਫ਼ਾਈਲ ਦਾ ਆਕਾਰ 5MB ਤੋਂ ਵੱਧ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ 5MB ਤੋਂ ਛੋਟੀ ਫ਼ਾਈਲ ਅੱਪਲੋਡ ਕਰੋ।",
+          micPermissionDenied: "ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਬ੍ਰਾਊਜ਼ਰ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਮਾਈਕ ਚਾਲੂ ਕਰੋ।",
+          micNotSupported: "ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਵੌਇਸ ਇਨਪੁਟ ਸਮਰਥਿਤ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਟਾਈਪ ਕਰੋ।",
+          paymentFailedTitle: "ਭੁਗਤਾਨ ਅਸਫਲ ਰਿਹਾ",
+          paymentCancelledMsg: "ਭੁਗਤਾਨ ਰੱਦ ਜਾਂ ਰੁਕ ਗਿਆ ਸੀ। ਤੁਸੀਂ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰ ਸਕਦੇ ਹੋ।",
+          retryPayment: "ਦੁਬਾਰਾ ਭੁਗਤਾਨ ਕਰੋ",
         };
       case "english":
       default:
@@ -819,6 +855,18 @@ export class LanguageService {
           postPaymentAssessmentNotification: "You have pending property assessments from previous year(s). Please visit the portal to complete the assessment and pay the outstanding dues.",
           downloadReceipt: "Download Payment Receipt",
           paymentConfirmationMsg: (txnId: string, amt: string, gw: string) => `Payment confirmation: Transaction ID: ${txnId}. Payment of ₹${amt} completed successfully via ${gw} Gateway.`,
+          resetConfirmTitle: "Restart conversation?",
+          resetConfirmDesc: "This will clear your current conversation history and generated payment receipts.",
+          resetConfirmAction: "Restart Chat",
+          cancelAction: "Cancel",
+          offlineAlert: "No internet connection. Waiting for network...",
+          noPropertyFound: (id: string) => `No property tax record found for the provided details (${id}). Please verify your PTID or registered mobile number, or visit your Municipal Corporation office.`,
+          fileSizeExceeded: "File size exceeds 5MB limit. Please upload a smaller document.",
+          micPermissionDenied: "Microphone access was denied. Please allow microphone permissions in your browser settings to use voice input.",
+          micNotSupported: "Voice input is not supported in this browser. Please type your message.",
+          paymentFailedTitle: "Payment Unsuccessful",
+          paymentCancelledMsg: "The payment transaction was cancelled, interrupted, or declined by the gateway. You can retry with the same or another gateway.",
+          retryPayment: "Retry Payment",
         };
     }
   }

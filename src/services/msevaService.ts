@@ -418,6 +418,17 @@ class MSevaService {
   async searchProperty(query: { propertyId?: string; mobileNumber?: string; uuid?: string }): Promise<PropertyRecord | null> {
     await new Promise((r) => setTimeout(r, 450));
     const ptid = query.propertyId?.toUpperCase().trim();
+
+    // Support empty search results state
+    if (
+      ptid === "NOTFOUND" ||
+      ptid === "KNP-000-000-00" ||
+      query.propertyId?.toUpperCase().includes("INVALID") ||
+      query.mobileNumber === "0000000000"
+    ) {
+      return null;
+    }
+
     if (ptid && this.isPtidInWorkflow(ptid)) {
       return {
         ...MOCK_PROPERTY_WORKFLOW,
@@ -508,8 +519,21 @@ class MSevaService {
   }
 
   // 4.7.2 Verify Payment Transaction
-  async verifyPayment(txnId: string, bill?: ConsolidatedBill): Promise<PaymentTransaction> {
+  async verifyPayment(txnId: string, bill?: ConsolidatedBill, shouldSimulateFailure = false): Promise<PaymentTransaction> {
     await new Promise((r) => setTimeout(r, 500));
+    if (shouldSimulateFailure || txnId.includes("FAIL")) {
+      return {
+        txnId,
+        tenantId: bill?.tenantId || "up.kanpur",
+        txnAmount: bill?.totalAmount || 5600.0,
+        billId: bill?.billId || "BILL-2026-5600",
+        consumerCode: bill?.consumerCode || "KNP-123-456-78",
+        businessService: bill?.businessService || "PT",
+        gateway: "AXIS",
+        txnStatus: "FAILURE",
+        redirectUrl: "",
+      };
+    }
     const receiptNumber = `PB_RCPT_2026_${Math.floor(10000 + Math.random() * 90000)}`;
     return {
       txnId,
