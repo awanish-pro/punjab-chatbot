@@ -1862,7 +1862,7 @@ export default function App() {
               </div>
               <div className="flex flex-col min-w-0">
                 <h1 className="text-[15px] font-semibold text-slate-800 leading-tight tracking-tight">
-                  Bharat chatbot
+                  mSeva Assistant
                 </h1>
                 <p className="text-[9.5px] uppercase font-medium tracking-wider text-neutral-400 mt-0.5 leading-tight">
                   Powered by AIRAWAT RESEARCH FOUNDATION
