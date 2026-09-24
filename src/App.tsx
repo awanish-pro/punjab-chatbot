@@ -800,23 +800,12 @@ export default function App() {
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title,
+            text: msgs.title ? `${msgs.title}\n\n${duesText}` : duesText,
             time: now(),
             card: {
               type: "bill_dues",
               property: property || undefined,
               bill,
-            },
-          },
-          {
-            id: msgId++,
-            role: "bot",
-            text: duesText,
-            time: now(),
-            card: {
-              type: "payment_modal",
-              bill,
-              property: property || undefined,
             },
           },
         ]);
@@ -864,22 +853,12 @@ export default function App() {
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title,
+            text: msgs.title ? `${msgs.title}\n\n${waterDuesText}` : waterDuesText,
             time: now(),
             card: {
               type: "bill_dues",
               water,
               sewerage,
-              bill: waterBill,
-            },
-          },
-          {
-            id: msgId++,
-            role: "bot",
-            text: waterDuesText,
-            time: now(),
-            card: {
-              type: "payment_modal",
               bill: waterBill,
             },
           },
@@ -915,20 +894,10 @@ export default function App() {
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title,
+            text: msgs.title ? `${msgs.title}\n\n${duesPrompt}` : duesPrompt,
             time: now(),
             card: {
               type: "bill_dues",
-              bill: consolidatedBill,
-            },
-          },
-          {
-            id: msgId++,
-            role: "bot",
-            text: duesPrompt,
-            time: now(),
-            card: {
-              type: "payment_modal",
               bill: consolidatedBill,
             },
           },
@@ -982,20 +951,10 @@ export default function App() {
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title,
+            text: msgs.title ? `${msgs.title}\n\n${duesText}` : duesText,
             time: now(),
             card: {
               type: "bill_dues",
-              bill,
-            },
-          },
-          {
-            id: msgId++,
-            role: "bot",
-            text: duesText,
-            time: now(),
-            card: {
-              type: "payment_modal",
               bill,
             },
           },
@@ -2386,29 +2345,63 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
 
                       {/* Property Tax / Water Demand Bill Receipt Card (Step 6) */}
                       {msg.card?.type === "bill_dues" && (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2.5 max-w-[325px] w-full">
                           <BillReceiptCard
                             bill={msg.card.bill}
                             property={msg.card.property}
                             water={msg.card.water}
                             citizen={citizen}
                           />
+
+                          {/* Payment Options Card directly inside the same response */}
                           {msg.card.bill && (
-                            <button
-                              type="button"
-                              disabled={isPaying}
-                              onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
-                              style={{ fontWeight: 500 }}
-                              title={`Make Payment (${shortcutKeyLabel} or Alt+P)`}
-                              className="w-full max-w-[325px] py-2.5 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                            >
-                              <span className="font-medium" style={{ fontWeight: 500 }}>
-                                {cardLabels.payAndProceed || "Pay & Proceed"} • ₹{Math.round(msg.card.bill.totalAmount).toLocaleString("en-IN")}
-                              </span>
-                              <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9.5px] bg-white/20 border border-white/30 rounded font-mono font-medium tracking-tight">
-                                {shortcutKeyLabel}
-                              </kbd>
-                            </button>
+                            <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/70 rounded-xl p-3.5 border border-blue-100 shadow-xs flex flex-col gap-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-700">Select Payment Gateway</span>
+                                <span className="text-xs font-bold text-blue-700">₹{msg.card.bill.totalAmount.toFixed(2)}</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                {(["AXIS", "HDFC", "PAYTM"] as const).map((gw) => (
+                                  <button
+                                    key={gw}
+                                    type="button"
+                                    onClick={() => setSelectedGateway(gw)}
+                                    className={`py-1.5 text-xs font-medium rounded border transition-all cursor-pointer ${
+                                      selectedGateway === gw
+                                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                        : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
+                                    }`}
+                                  >
+                                    {gw}
+                                  </button>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                disabled={isPaying}
+                                onClick={() => msg.card?.bill && handleInitiatePayment(msg.card.bill, msg.card.property)}
+                                style={{ fontWeight: 500 }}
+                                title={`Make payment via ${selectedGateway} (${shortcutKeyLabel} or Alt+P)`}
+                                className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] active:scale-[0.99] text-white font-medium rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                              >
+                                {isPaying ? (
+                                  <span className="flex items-center gap-1.5 font-medium" style={{ fontWeight: 500 }}>
+                                    <svg className="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    <span>Redirecting to Payment Gateway...</span>
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center justify-center gap-2 font-medium" style={{ fontWeight: 500 }}>
+                                    <span>{cardLabels.payAndProceed || cardLabels.makePayment || "Pay & Proceed"} ({selectedGateway})</span>
+                                    <kbd className="inline-flex items-center px-1.5 py-0.5 text-[9.5px] bg-white/20 border border-white/30 rounded font-mono font-medium tracking-tight">
+                                      {shortcutKeyLabel}
+                                    </kbd>
+                                  </span>
+                                )}
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
