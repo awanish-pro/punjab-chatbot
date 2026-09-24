@@ -1530,7 +1530,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
       {open && (
         <div className="pointer-events-auto fixed bottom-[88px] right-6 w-[410px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-110px)] flex flex-col rounded-[28px] overflow-hidden chat-window-rainbow animate-slide-up bg-white">
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-slate-100 bg-white select-none">
+          <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-slate-200/80 bg-[#F9FAFB] select-none">
             {/* Left: Avatar + Titles */}
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 shadow-xs">
@@ -1551,7 +1551,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-8 h-8 rounded-full border border-slate-200/90 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full border border-slate-200/90 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer bg-white shadow-xs"
                 title="Reset session"
                 aria-label="Restart chat"
               >
@@ -1566,7 +1566,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
               <button
                 type="button"
                 onClick={handleDownload}
-                className="w-8 h-8 rounded-full border border-slate-200/90 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full border border-slate-200/90 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer bg-white shadow-xs"
                 title="Download chat transcript"
                 aria-label="Download chat transcript"
               >
@@ -1593,7 +1593,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
               </div>
             ) : (
               /* Messages scroll area */
-              <div className="flex-1 overflow-y-auto chat-scrollbar bg-[#f8fafc] px-4 py-4 flex flex-col gap-3.5">
+              <div className="flex-1 overflow-y-auto chat-scrollbar bg-white px-4 py-4 flex flex-col gap-3.5">
               {messages.map((msg, idx) => {
                 const isLatest = idx === messages.length - 1;
                 const isCardVisible = !isLatest || textFinishedIds.has(msg.id);
@@ -1603,7 +1603,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                       <BotFace width={16} height={12.6} />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <div className="bg-white rounded-[16px] rounded-tl-[4px] px-4 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100">
+                      <div className="bg-white rounded-[16px] rounded-tl-[4px] px-4 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/80">
                         <AnimatedBotText
                           text={msg.text}
                           isLatest={isLatest}
@@ -2206,7 +2206,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                   <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white border border-[#2563eb]/20 flex items-center justify-center shadow-xs">
                     <BotFace width={16} height={12.6} />
                   </div>
-                  <div className="bg-white rounded-[16px] rounded-bl-[4px] px-4 py-3 shadow-xs border border-slate-100 flex gap-1.5 items-center">
+                  <div className="bg-white rounded-[16px] rounded-bl-[4px] px-4 py-3 shadow-xs border border-slate-200/80 flex gap-1.5 items-center">
                     <span className="typing-dot w-2 h-2 rounded-full bg-slate-400 inline-block" />
                     <span className="typing-dot w-2 h-2 rounded-full bg-slate-400 inline-block" />
                     <span className="typing-dot w-2 h-2 rounded-full bg-slate-400 inline-block" />
