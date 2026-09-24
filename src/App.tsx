@@ -2869,11 +2869,11 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleCancelVoiceInput}
-                        className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] active:scale-95 border border-[#e5e7eb] text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs flex-shrink-0"
+                        className="w-9 h-9 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] active:scale-95 border border-[#e5e7eb] text-slate-800 flex items-center justify-center transition-all cursor-pointer shadow-2xs flex-shrink-0"
                         title="Cancel recording"
                         aria-label="Cancel recording"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18" />
                           <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
