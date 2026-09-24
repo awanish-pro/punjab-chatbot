@@ -2287,24 +2287,6 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                               )}
                             </div>
 
-                            {/* Step 4: Limited Record Confirmation Preview */}
-                            {authOtpSent && identifiedPreview && (
-                              <div className="bg-blue-50/70 border border-blue-200/90 rounded-xl p-3 text-xs text-slate-800 space-y-1.5 animate-fade-in font-medium">
-                                <div className="border-b border-blue-200/60 pb-1.5 flex items-center">
-                                  <span className="text-[10.5px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-medium whitespace-nowrap">
-                                    {identifiedPreview.identifierLabel}: {identifiedPreview.identifierValue}
-                                  </span>
-                                </div>
-                                <div className="text-[11px] space-y-0.5 text-slate-700 font-medium">
-                                  <p><span className="font-medium text-slate-600">{cardLabels.ownerNameLabel}:</span> <span className="font-medium text-slate-800">{identifiedPreview.maskedOwner}</span></p>
-                                  <p><span className="font-medium text-slate-600">{cardLabels.propertyAddressLabel}:</span> <span className="font-medium text-slate-800">{identifiedPreview.address}</span></p>
-                                  <p><span className="font-medium text-slate-600">{cardLabels.registeredMobileLabel}:</span> <span className="font-mono text-blue-800 font-medium">{identifiedPreview.maskedMobile}</span></p>
-                                </div>
-                                <p className="text-[10.5px] text-blue-700 font-medium">
-                                  {cardLabels.recordPreviewPrompt}
-                                </p>
-                              </div>
-                            )}
 
                             {/* OTP Field (Only shown after clicking Send OTP - Step 5) */}
                             {authOtpSent && (
