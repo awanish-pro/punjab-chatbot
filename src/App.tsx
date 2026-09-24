@@ -2824,7 +2824,7 @@ This is a computer-generated official receipt issued by the Municipal Corporatio
                 />
 
                 {/* Bottom Action Toolbar inside the Box */}
-                <div className="flex items-center justify-between pt-1.5">
+                <div className="flex items-center justify-between pt-3 pb-0.5 translate-y-[2px]">
                   {/* Left: Camera icon + subtle shortcut hint */}
                   <div className="flex items-center gap-2">
                     <button
