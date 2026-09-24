@@ -791,16 +791,13 @@ export default function App() {
         setTyping(false);
 
         const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_tax");
-        const duesText = cardLabels.outstandingPayPrompt
-          ? cardLabels.outstandingPayPrompt(bill.totalAmount.toLocaleString("en-IN"))
-          : `You have an outstanding amount of ₹${bill.totalAmount.toLocaleString("en-IN")}. Would you like to pay now?`;
 
         setMessages((prev) => [
           ...prev,
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title ? `${msgs.title}\n\n${duesText}` : duesText,
+            text: msgs.title,
             time: now(),
             card: {
               type: "bill_dues",
@@ -846,14 +843,13 @@ export default function App() {
         setTyping(false);
 
         const msgs = languageService.getAuthSuccessMessage(lang, user.name, "water_bill");
-        const waterDuesText = cardLabels.outstandingPayPrompt(waterBill.totalAmount.toLocaleString("en-IN"));
 
         setMessages((prev) => [
           ...prev,
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title ? `${msgs.title}\n\n${waterDuesText}` : waterDuesText,
+            text: msgs.title,
             time: now(),
             card: {
               type: "bill_dues",
@@ -887,14 +883,12 @@ export default function App() {
           ],
         };
 
-        const duesPrompt = cardLabels.outstandingPayPrompt(totalOutstanding.toLocaleString("en-IN"));
-
         setMessages((prev) => [
           ...prev,
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title ? `${msgs.title}\n\n${duesPrompt}` : duesPrompt,
+            text: msgs.title,
             time: now(),
             card: {
               type: "bill_dues",
@@ -942,16 +936,13 @@ export default function App() {
         const bill = await msevaService.fetchBill("PB-PT-123-456-78", "PT");
         setTyping(false);
         const msgs = languageService.getAuthSuccessMessage(lang, user.name, "property_tax");
-        const duesText = cardLabels.outstandingPayPrompt
-          ? cardLabels.outstandingPayPrompt(bill.totalAmount.toLocaleString("en-IN"))
-          : `You have an outstanding amount of ₹${bill.totalAmount.toLocaleString("en-IN")}. Would you like to pay now?`;
 
         setMessages((prev) => [
           ...prev,
           {
             id: msgId++,
             role: "bot",
-            text: msgs.title ? `${msgs.title}\n\n${duesText}` : duesText,
+            text: msgs.title,
             time: now(),
             card: {
               type: "bill_dues",
@@ -1492,29 +1483,77 @@ export default function App() {
               verifiedTxn.txnAmount.toLocaleString("en-IN"),
               verifiedTxn.gateway
             );
-            const postPaymentMsg = languageService.getPostPaymentNotification(conversationLanguage);
 
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: msgId++,
-                role: "bot",
-                text: confirmationMsg,
-                time: now(),
-                card: {
-                  type: "payment_success",
-                  transaction: verifiedTxn,
-                  bill,
-                  property,
+            const isArrears = bill.billId.startsWith("PB-ARREAR");
+
+            if (!isArrears) {
+              const postPaymentMsg = languageService.getPostPaymentNotification(conversationLanguage);
+              const arrearsBill: ConsolidatedBill = {
+                billId: `PB-ARREAR-${verifiedTxn.consumerCode}`,
+                consumerCode: verifiedTxn.consumerCode,
+                businessService: bill.businessService,
+                totalAmount: 2400,
+                dueDate: "31-Mar-2025",
+                status: "ACTIVE",
+                tenantId: bill.tenantId,
+                demandBreakdown: [
+                  { taxHeadCode: "PT_ARREARS", title: "Previous Year Pending Assessment (FY 2024-2025)", taxAmount: 2400 },
+                ],
+              };
+
+              const duesFollowupText = cardLabels.outstandingPayPrompt
+                ? cardLabels.outstandingPayPrompt("2,400")
+                : "You have an outstanding amount of ₹2,400. Would you like to pay now?";
+
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: msgId++,
+                  role: "bot",
+                  text: confirmationMsg,
+                  time: now(),
+                  card: {
+                    type: "payment_success",
+                    transaction: verifiedTxn,
+                    bill,
+                    property,
+                  },
                 },
-              },
-              {
-                id: msgId++,
-                role: "bot",
-                text: postPaymentMsg,
-                time: now(),
-              },
-            ]);
+                {
+                  id: msgId++,
+                  role: "bot",
+                  text: `${postPaymentMsg}\n\n${duesFollowupText}`,
+                  time: now(),
+                  card: {
+                    type: "payment_modal",
+                    bill: arrearsBill,
+                    property,
+                  },
+                },
+              ]);
+            } else {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: msgId++,
+                  role: "bot",
+                  text: confirmationMsg,
+                  time: now(),
+                  card: {
+                    type: "payment_success",
+                    transaction: verifiedTxn,
+                    bill,
+                    property,
+                  },
+                },
+                {
+                  id: msgId++,
+                  role: "bot",
+                  text: "All your pending property tax assessments and outstanding dues are fully cleared. Thank you!",
+                  time: now(),
+                },
+              ]);
+            }
           } else {
             // Payment Failure / Interrupted flow
             setMessages((prev) => [
