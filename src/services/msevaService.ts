@@ -50,17 +50,19 @@ export interface DemandDetail {
   taxHeadCode: string;
   title: string;
   taxAmount: number;
-  collectionAmount: number;
+  collectionAmount?: number;
 }
 
 export interface ConsolidatedBill {
   billId: string;
   consumerCode: string;
-  businessService: "PT" | "WS" | "SW";
+  businessService: "PT" | "WS" | "SW" | "MUNICIPAL_CONSOLIDATED" | string;
   totalAmount: number;
   tenantId: string;
-  billDate: string;
+  billDate?: string;
   dueDate: string;
+  status?: string;
+  billNumber?: string;
   demandBreakdown: DemandDetail[];
   currentTaxDemand?: number;
   arrears?: number;

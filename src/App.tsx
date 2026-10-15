@@ -10,7 +10,8 @@ import {
   type IdentifiedRecordPreview,
 } from "./services/msevaService";
 import { languageService, type SupportedLanguage } from "./services/languageService";
-import { generatePaymentReceiptPdf } from "./services/receiptPdfService";
+import { generatePaymentReceiptPdf, generateDueBillPdf } from "./services/receiptPdfService";
+import html2canvas from "html2canvas";
 
 // BotFace: inline SVG with CSS-animated blinking eyes, centered within precise bounding box
 function BotFace({
@@ -263,64 +264,72 @@ function AnimatedBotText({
 }
 
 // Authentic Punjab State Power Corporation Limited (PSPCL) circular seal matching the screenshot
+const PSPCL_SEAL_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46.5" stroke="#C53030" stroke-width="3" fill="#FFFDFD" />
+    <circle cx="50" cy="50" r="41.5" stroke="#C53030" stroke-width="1" stroke-dasharray="2.5 1.5" fill="none" />
+    <path id="sealPathTop" d="M 17,50 A 33,33 0 0,1 83,50" fill="none" />
+    <path id="sealPathBottom" d="M 83,50 A 33,33 0 0,1 17,50" fill="none" />
+    <text font-size="5.2" font-weight="700" fill="#C53030" letter-spacing="0.4">
+      <textPath href="#sealPathTop" startOffset="50%" text-anchor="middle">
+        PUNJAB STATE POWER CORP. LTD.
+      </textPath>
+    </text>
+    <text font-size="4.6" font-weight="600" fill="#C53030" letter-spacing="0.5">
+      <textPath href="#sealPathBottom" startOffset="50%" text-anchor="middle">
+        • PUNJAB GOVT. UNDERTAKING •
+      </textPath>
+    </text>
+    <circle cx="50" cy="28.5" r="1.3" fill="white" />
+    <circle cx="50" cy="50" r="23.5" fill="#C53030" />
+    <path d="M50 30 L45 59 H55 L50 30 Z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+    <line x1="41" y1="40" x2="59" y2="40" stroke="white" stroke-width="1.6" stroke-linecap="round" />
+    <line x1="43" y1="48" x2="57" y2="48" stroke="white" stroke-width="1.6" stroke-linecap="round" />
+    <line x1="44.5" y1="54" x2="55.5" y2="54" stroke="white" stroke-width="1.6" stroke-linecap="round" />
+    <line x1="42" y1="40" x2="56" y2="48" stroke="white" stroke-width="1.1" />
+    <line x1="58" y1="40" x2="44" y2="48" stroke="white" stroke-width="1.1" />
+    <line x1="44" y1="48" x2="55" y2="54" stroke="white" stroke-width="1.1" />
+    <line x1="56" y1="48" x2="45" y2="54" stroke="white" stroke-width="1.1" />
+    <text x="50" y="67.5" text-anchor="middle" font-size="6.2" font-weight="900" fill="white" letter-spacing="0.8" font-family="sans-serif">
+      PSPCL
+    </text>
+  </svg>`.trim()
+)}`;
+
 function CorporationSeal({ className }: { className?: string }) {
   return (
     <div className={`flex justify-center items-center ${className || ""}`}>
-      <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Outer Red Ring */}
-        <circle cx="50" cy="50" r="46.5" stroke="#C53030" strokeWidth="3" fill="#FFFDFD" />
-        <circle cx="50" cy="50" r="41.5" stroke="#C53030" strokeWidth="1" strokeDasharray="2.5 1.5" fill="none" />
-
-        {/* Circular text paths */}
-        <path id="sealPathTop" d="M 17,50 A 33,33 0 0,1 83,50" fill="none" />
-        <path id="sealPathBottom" d="M 83,50 A 33,33 0 0,1 17,50" fill="none" />
-
-        <text fontSize="5.2" fontWeight="700" fill="#C53030" letterSpacing="0.4">
-          <textPath href="#sealPathTop" startOffset="50%" textAnchor="middle">
-            PUNJAB STATE POWER CORP. LTD.
-          </textPath>
-        </text>
-        <text fontSize="4.6" fontWeight="600" fill="#C53030" letterSpacing="0.5">
-          <textPath href="#sealPathBottom" startOffset="50%" textAnchor="middle">
-            • PUNJAB GOVT. UNDERTAKING •
-          </textPath>
-        </text>
-
-        {/* Inner Solid Red Circle */}
-        <circle cx="50" cy="50" r="23.5" fill="#C53030" />
-
-        {/* Transmission Tower / Insignia inside Medallion */}
-        <path d="M50 30 L45 59 H55 L50 30 Z" stroke="white" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
-        <line x1="41" y1="40" x2="59" y2="40" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-        <line x1="43" y1="48" x2="57" y2="48" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-        <line x1="44.5" y1="54" x2="55.5" y2="54" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-        <line x1="42" y1="40" x2="56" y2="48" stroke="white" strokeWidth="1.1" />
-        <line x1="58" y1="40" x2="44" y2="48" stroke="white" strokeWidth="1.1" />
-        <line x1="44" y1="48" x2="55" y2="54" stroke="white" strokeWidth="1.1" />
-        <line x1="56" y1="48" x2="45" y2="54" stroke="white" strokeWidth="1.1" />
-        <circle cx="50" cy="28.5" r="1.3" fill="white" />
-
-        {/* PSPCL Acronym */}
-        <text x="50" y="67.5" textAnchor="middle" fontSize="6.2" fontWeight="900" fill="white" letterSpacing="0.8" fontFamily="sans-serif">
-          PSPCL
-        </text>
-      </svg>
+      <img
+        src={PSPCL_SEAL_DATA_URI}
+        width={60}
+        height={60}
+        alt="PSPCL Seal"
+        className="w-[60px] h-[60px] select-none block"
+      />
     </div>
   );
 }
 
-// Bill Receipt Card UI exactly matching screenshot
+// Bill Receipt Card UI exactly matching screenshot with Copy as Image & Download options
 function BillReceiptCard({
   bill,
   property,
   water,
   citizen,
+  language = "english",
 }: {
   bill?: ConsolidatedBill;
   property?: PropertyRecord;
   water?: WaterConnection;
   citizen?: CitizenUser | null;
+  language?: SupportedLanguage;
 }) {
+  const [imageCopied, setImageCopied] = useState(false);
+  const [isCopyingImage, setIsCopyingImage] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const cardCaptureRef = useRef<HTMLDivElement>(null);
+
+  const cardLabels = languageService.getCardLabels(language);
   const isWater = bill?.businessService === "WS" || !!water;
 
   // Determine Identifier to show inside the prominent dashed box (PJB instead of KNP)
@@ -359,103 +368,572 @@ function BillReceiptCard({
     ? Math.round(bill.totalAmount).toLocaleString("en-IN")
     : "5600";
 
+  // Render the due bill receipt directly onto a crisp, high-resolution Canvas (100% reliable, zero CORS/OKLCH taint)
+  const createDirectBillCanvas = () => {
+    const canvas = document.createElement("canvas");
+    const scale = 3;
+    const width = 340;
+
+    const hasMultipleOwners = property?.owners && property.owners.length > 1;
+    const extraOwnersHeight = hasMultipleOwners ? (property.owners!.length - 1) * 16 : 0;
+    const baseHeight = 510;
+    const height = baseHeight + extraOwnersHeight;
+
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return canvas;
+
+    ctx.scale(scale, scale);
+
+    // Helper for rounded rectangles (fully cross-browser)
+    const drawRoundRect = (x: number, y: number, w: number, h: number, r: number) => {
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+      }
+    };
+
+    // Helper for dashed lines
+    const drawDashedLine = (x1: number, y1: number, x2: number, y2: number, color = "#d4d4d4") => {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    // 1. White Card Background with rounded corners & clean border
+    drawRoundRect(0, 0, width, height, 16);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const padLeft = 20;
+    const padRight = width - 20;
+    const contentWidth = padRight - padLeft;
+    const centerX = width / 2;
+
+    // 2. Punjab State Power Corporation Limited Emblem Seal
+    const sealCenterY = 46;
+    const sealRadius = 24;
+
+    // Outer circle
+    ctx.save();
+    ctx.strokeStyle = "#C53030";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(centerX, sealCenterY, sealRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner dashed circle
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([2.5, 1.5]);
+    ctx.beginPath();
+    ctx.arc(centerX, sealCenterY, sealRadius - 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Center filled circle
+    ctx.save();
+    ctx.fillStyle = "#C53030";
+    ctx.beginPath();
+    ctx.arc(centerX, sealCenterY, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Power transmission tower symbol (white)
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(centerX, sealCenterY - 8);
+    ctx.lineTo(centerX - 4.5, sealCenterY + 4.5);
+    ctx.lineTo(centerX + 4.5, sealCenterY + 4.5);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(centerX - 6, sealCenterY - 2.5);
+    ctx.lineTo(centerX + 6, sealCenterY - 2.5);
+    ctx.moveTo(centerX - 5, sealCenterY + 1.5);
+    ctx.lineTo(centerX + 5, sealCenterY + 1.5);
+    ctx.stroke();
+
+    // PSPCL text
+    ctx.font = "bold 5px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PSPCL", centerX, sealCenterY + 8);
+    ctx.restore();
+
+    // Curved text top & bottom
+    ctx.save();
+    ctx.font = "bold 4.5px sans-serif";
+    ctx.fillStyle = "#C53030";
+    ctx.textAlign = "center";
+    ctx.fillText("PUNJAB STATE POWER CORP. LTD.", centerX, sealCenterY - 17);
+    ctx.font = "bold 4px sans-serif";
+    ctx.fillText("• PUNJAB GOVT. UNDERTAKING •", centerX, sealCenterY + 20);
+    ctx.restore();
+
+    // 3. Corporation Title
+    ctx.save();
+    ctx.font = "bold 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#171717";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("PUNJAB STATE POWER CORPORATION LIMITED", centerX, 78);
+    ctx.fillText("(PSPCL)", centerX, 93);
+
+    // 4. Timestamp
+    ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#737373";
+    ctx.fillText("Wed, May 27, 2026 • 9:27:53 AM", centerX, 110);
+    ctx.restore();
+
+    // 5. Dashed ID Box
+    const idBoxY = 128;
+    const idBoxHeight = 46;
+    ctx.save();
+    ctx.strokeStyle = "#9ca3af";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    drawRoundRect(padLeft, idBoxY, contentWidth, idBoxHeight, 10);
+    ctx.stroke();
+    ctx.restore();
+
+    // Header pill text over dashed line
+    const tagText = isWater ? "------ Water Consumer no. ------" : "------ Property ID no. ------";
+    ctx.save();
+    ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    const tagWidth = ctx.measureText(tagText).width;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(centerX - tagWidth / 2 - 4, idBoxY - 6, tagWidth + 8, 12);
+    ctx.fillStyle = "#525252";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tagText, centerX, idBoxY);
+
+    // Prominent ID Text
+    ctx.font = "bold 20px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#111827";
+    ctx.fillText(displayId, centerX, idBoxY + 27);
+    ctx.restore();
+
+    let curY = idBoxY + idBoxHeight + 16;
+
+    // 6. Property / Water Details Section
+    ctx.save();
+    ctx.font = "bold 11.5px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#1f2937";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(isWater ? "Water Connection Details:" : "Property Details:", padLeft, curY);
+    curY += 16;
+    drawDashedLine(padLeft, curY, padRight, curY, "#e5e7eb");
+    curY += 8;
+
+    const drawRow = (label: string, val: string, isBoldVal = false) => {
+      ctx.save();
+      ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = "#4b5563";
+      ctx.textAlign = "left";
+      ctx.fillText(label, padLeft, curY);
+
+      ctx.font = isBoldVal
+        ? "bold 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+        : "500 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = "#111827";
+      ctx.textAlign = "right";
+      ctx.fillText(val, padRight, curY);
+      ctx.restore();
+      curY += 17;
+    };
+
+    if (hasMultipleOwners) {
+      ctx.save();
+      ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = "#4b5563";
+      ctx.textAlign = "left";
+      ctx.fillText("Owner Names", padLeft, curY);
+
+      ctx.font = "500 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = "#111827";
+      ctx.textAlign = "right";
+      property!.owners!.forEach((o, idx) => {
+        ctx.fillText(`${idx + 1}. ${o.name}`, padRight, curY);
+        curY += 16;
+      });
+      ctx.restore();
+    } else {
+      drawRow("Customer Name", customerName, false);
+    }
+
+    drawRow("Mobile no.", mobileNo, false);
+
+    // Address (multiline)
+    ctx.save();
+    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#4b5563";
+    ctx.textAlign = "left";
+    ctx.fillText("Address", padLeft, curY);
+
+    ctx.font = "500 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#111827";
+    ctx.textAlign = "right";
+    ctx.fillText(addressLine1, padRight, curY);
+    curY += 15;
+    ctx.fillText(addressLine2, padRight, curY);
+    curY += 17;
+    ctx.restore();
+
+    drawRow("Ward no.", wardNo, false);
+    drawRow("Status", status, false);
+
+    curY += 6;
+
+    // 7. Tax Details Section
+    ctx.save();
+    ctx.font = "bold 11.5px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#1f2937";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(isWater ? "Water Tax Details:" : "Property Tax Details:", padLeft, curY);
+    curY += 16;
+    drawDashedLine(padLeft, curY, padRight, curY, "#e5e7eb");
+    curY += 8;
+
+    drawRow("Financial year", financialYear, false);
+    ctx.restore();
+
+    curY += 6;
+
+    // 8. Divider and Current Due Amount
+    drawDashedLine(padLeft, curY, padRight, curY, "#d1d5db");
+    curY += 12;
+
+    ctx.save();
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#374151";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Current due amount", padLeft, curY + 4);
+
+    ctx.font = "bold 17px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.fillStyle = "#111827";
+    ctx.textAlign = "right";
+    ctx.fillText(`₹${dueAmount}`, padRight, curY + 4);
+    ctx.restore();
+
+    return canvas;
+  };
+
+  // Obtain canvas node with bulletproof fallback
+  const renderCardToCanvas = async (): Promise<HTMLCanvasElement | null> => {
+    // Attempt DOM capture via html2canvas if DOM node is available
+    if (cardCaptureRef.current) {
+      try {
+        const canvas = await html2canvas(cardCaptureRef.current, {
+          scale: 3,
+          backgroundColor: "#ffffff",
+          useCORS: true,
+          logging: false,
+          allowTaint: false,
+        });
+        if (canvas && canvas.width > 0 && canvas.height > 0) {
+          return canvas;
+        }
+      } catch (err) {
+        console.warn("DOM html2canvas fallback to direct canvas generator:", err);
+      }
+    }
+
+    // Direct Canvas Generator (100% Guaranteed Crisp & Un-tainted)
+    return createDirectBillCanvas();
+  };
+
+  // Copy Due Amount Bill as an Image (PNG) to clipboard
+  const handleCopyImage = async () => {
+    if (isCopyingImage) return;
+    setIsCopyingImage(true);
+
+    try {
+      // 1. Generate high-resolution canvas
+      const canvas = await renderCardToCanvas();
+      if (!canvas) {
+        setIsCopyingImage(false);
+        return;
+      }
+
+      // 2. Generate PNG Blob and Data URL
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), "image/png");
+      });
+
+      const pngDataUrl = canvas.toDataURL("image/png");
+
+      let copiedSuccessfully = false;
+
+      // Ensure focus on current window so Clipboard API permission check passes
+      try {
+        window.focus();
+      } catch {}
+
+      // Method A: Modern Navigator ClipboardItem API with image/png
+      if (pngBlob && navigator.clipboard && typeof ClipboardItem !== "undefined") {
+        try {
+          const clipboardPayload: Record<string, Blob> = {
+            "image/png": pngBlob,
+          };
+
+          // Also attach text/html containing <img> for rich-text destinations
+          try {
+            clipboardPayload["text/html"] = new Blob(
+              [`<img src="${pngDataUrl}" alt="Due Bill Receipt" />`],
+              { type: "text/html" }
+            );
+          } catch {}
+
+          const item = new ClipboardItem(clipboardPayload);
+          await navigator.clipboard.write([item]);
+          copiedSuccessfully = true;
+        } catch (clipErr) {
+          console.warn("Direct image/png clipboard write failed, trying fallbacks:", clipErr);
+        }
+      }
+
+      // Method B: Event listener fallback (document.execCommand copy with HTML image)
+      if (!copiedSuccessfully) {
+        try {
+          const onCopy = (e: ClipboardEvent) => {
+            e.preventDefault();
+            if (e.clipboardData) {
+              e.clipboardData.clearData();
+              e.clipboardData.setData("text/html", `<img src="${pngDataUrl}" alt="Due Bill Receipt" />`);
+              e.clipboardData.setData("text/plain", `PSPCL Due Bill: ${displayId} (₹${dueAmount})`);
+            }
+          };
+          document.addEventListener("copy", onCopy);
+          copiedSuccessfully = document.execCommand("copy");
+          document.removeEventListener("copy", onCopy);
+        } catch (execErr) {
+          console.warn("document.execCommand fallback failed:", execErr);
+        }
+      }
+
+      if (copiedSuccessfully) {
+        setImageCopied(true);
+        setTimeout(() => setImageCopied(false), 2500);
+      } else {
+        // Method C: If browser completely blocks clipboard writing (e.g. sandboxed iframe),
+        // save the image directly as a PNG file so user receives the bill card image!
+        const link = document.createElement("a");
+        link.href = pngDataUrl;
+        link.download = `Due-Bill-${displayId}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setImageCopied(true);
+        setTimeout(() => setImageCopied(false), 2500);
+      }
+    } catch (err) {
+      console.error("Failed to copy due bill as image:", err);
+    } finally {
+      setIsCopyingImage(false);
+    }
+  };
+
+  // Download official vector PDF bill with image fallback
+  const handleDownloadBill = async () => {
+    setIsDownloading(true);
+    try {
+      generateDueBillPdf(bill, property, water, citizen);
+    } catch (err) {
+      console.warn("PDF generation fallback to PNG image download:", err);
+      const canvas = await renderCardToCanvas();
+      if (canvas) {
+        const pngUrl = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = pngUrl;
+        link.download = `Due-Bill-${displayId}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } finally {
+      setTimeout(() => setIsDownloading(false), 800);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200/90 p-4 sm:p-5 shadow-xs text-neutral-800 font-mono flex flex-col max-w-[325px] w-full animate-fade-in select-text">
-      {/* 1. Header Seal Emblem */}
-      <CorporationSeal className="mb-2" />
+    <div className="bg-white rounded-2xl border border-neutral-200/90 p-3.5 sm:p-5 shadow-xs text-neutral-800 font-mono flex flex-col w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px] animate-fade-in select-text">
+      {/* Printable / Capturable Receipt Area (Captured cleanly without button row) */}
+      <div ref={cardCaptureRef} className="bg-white flex flex-col">
+        {/* 1. Header Seal Emblem */}
+        <CorporationSeal className="mb-2" />
 
-      {/* 2. Corporation Title */}
-      <h3 className="font-mono font-bold text-[12px] sm:text-[12.5px] text-neutral-900 tracking-tight text-center uppercase leading-snug">
-        {corpTitle}
-      </h3>
+        {/* 2. Corporation Title */}
+        <h3 className="font-mono font-bold text-[12px] sm:text-[12.5px] text-neutral-900 tracking-tight text-center uppercase leading-snug">
+          {corpTitle}
+        </h3>
 
-      {/* 3. Timestamp */}
-      <p className="text-[10.5px] text-neutral-500 font-mono text-center tracking-tight mt-1 mb-2">
-        Wed, May 27, 2026 • 9:27:53 AM
-      </p>
+        {/* 3. Timestamp */}
+        <p className="text-[10.5px] text-neutral-500 font-mono text-center tracking-tight mt-1 mb-2">
+          Wed, May 27, 2026 • 9:27:53 AM
+        </p>
 
-      {/* 4. Dashed Box with Property ID / Consumer ID */}
-      <div className="relative border border-dashed border-neutral-400 rounded-xl px-3 py-3 my-2 text-center">
-        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white px-2 text-[10.5px] font-mono text-neutral-600 tracking-tight whitespace-nowrap">
-          {isWater ? "------ Water Consumer no. ------" : "------ Property ID no. ------"}
+        {/* 4. Dashed Box with Property ID / Consumer ID (Clean, copy option removed from ID) */}
+        <div className="relative border border-dashed border-neutral-400 rounded-xl px-3 py-3 my-2 text-center bg-white">
+          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white px-2 text-[10.5px] font-mono text-neutral-600 tracking-tight whitespace-nowrap">
+            {isWater ? "------ Water Consumer no. ------" : "------ Property ID no. ------"}
+          </div>
+          <div className="text-[20px] sm:text-[22px] font-mono font-bold tracking-[0.10em] text-neutral-900 pt-0.5">
+            {displayId}
+          </div>
         </div>
-        <div className="text-[20px] sm:text-[22px] font-mono font-bold tracking-[0.10em] text-neutral-900 pt-0.5">
-          {displayId}
-        </div>
-      </div>
 
-      {/* 5. Property Details Section */}
-      <div className="flex flex-col gap-1.5 pt-2">
-        <h4 className="font-mono font-bold text-[12px] text-neutral-800">
-          {isWater ? "Water Connection Details:" : "Property Details:"}
-        </h4>
-        <div className="border-b border-dashed border-neutral-300 -mt-0.5 mb-1" />
+        {/* 5. Property Details Section */}
+        <div className="flex flex-col gap-1.5 pt-2">
+          <h4 className="font-mono font-bold text-[12px] text-neutral-800">
+            {isWater ? "Water Connection Details:" : "Property Details:"}
+          </h4>
+          <div className="border-b border-dashed border-neutral-300 -mt-0.5 mb-1" />
 
-        {/* Support Multiple / Joint Property Owners */}
-        {property?.owners && property.owners.length > 1 ? (
-          <div className="flex justify-between items-start text-[11.5px] font-mono">
-            <span className="text-neutral-600">Owner Names</span>
-            <div className="text-neutral-900 font-medium text-right leading-tight max-w-[62%]">
-              {property.owners.map((owner, idx) => (
-                <div key={idx} className={idx > 0 ? "mt-0.5" : ""}>
-                  {idx + 1}. {owner.name}
-                </div>
-              ))}
+          {/* Support Multiple / Joint Property Owners */}
+          {property?.owners && property.owners.length > 1 ? (
+            <div className="flex justify-between items-start text-[11.5px] font-mono">
+              <span className="text-neutral-600">Owner Names</span>
+              <div className="text-neutral-900 font-medium text-right leading-tight max-w-[62%]">
+                {property.owners.map((owner, idx) => (
+                  <div key={idx} className={idx > 0 ? "mt-0.5" : ""}>
+                    {idx + 1}. {owner.name}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex justify-between items-start text-[11.5px] font-mono">
-            <span className="text-neutral-600">Customer Name</span>
-            <span className="text-neutral-900 font-medium text-right">{customerName}</span>
-          </div>
-        )}
+          ) : (
+            <div className="flex justify-between items-start text-[11.5px] font-mono">
+              <span className="text-neutral-600">Customer Name</span>
+              <span className="text-neutral-900 font-medium text-right">{customerName}</span>
+            </div>
+          )}
 
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Mobile no.</span>
-          <span className="text-neutral-900 font-medium text-right font-mono">{mobileNo}</span>
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Mobile no.</span>
+            <span className="text-neutral-900 font-medium text-right font-mono">{mobileNo}</span>
+          </div>
+
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Address</span>
+            <span className="text-neutral-900 font-medium text-right max-w-[62%] leading-tight">
+              {addressLine1}
+              <br />
+              {addressLine2}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Ward no.</span>
+            <span className="text-neutral-900 font-medium text-right">{wardNo}</span>
+          </div>
+
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Status</span>
+            <span className="text-neutral-900 font-medium text-right">{status}</span>
+          </div>
         </div>
 
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Address</span>
-          <span className="text-neutral-900 font-medium text-right max-w-[62%] leading-tight">
-            {addressLine1}
-            <br />
-            {addressLine2}
+        {/* 6. Tax / Service Details Section */}
+        <div className="flex flex-col gap-1.5 pt-3">
+          <h4 className="font-mono font-bold text-[12px] text-neutral-800">
+            {isWater ? "Water Tax Details:" : "Property Tax Details:"}
+          </h4>
+          <div className="border-b border-dashed border-neutral-300 -mt-0.5 mb-1" />
+
+          <div className="flex justify-between items-start text-[11.5px] font-mono">
+            <span className="text-neutral-600">Financial year</span>
+            <span className="text-neutral-900 font-medium text-right">{financialYear}</span>
+          </div>
+        </div>
+
+        {/* 7. Divider and Current Due Amount */}
+        <div className="border-b border-dashed border-neutral-300 mt-3 mb-2" />
+
+        <div className="flex justify-between items-center font-mono py-1">
+          <span className="text-[12px] text-neutral-700 font-normal">Current due amount</span>
+          <span className="text-[16px] sm:text-[17px] font-mono font-bold text-neutral-900">
+            ₹{dueAmount}
           </span>
         </div>
-
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Ward no.</span>
-          <span className="text-neutral-900 font-medium text-right">{wardNo}</span>
-        </div>
-
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Status</span>
-          <span className="text-neutral-900 font-medium text-right">{status}</span>
-        </div>
       </div>
 
-      {/* 6. Tax / Service Details Section (Last payment date removed as not available in PT records) */}
-      <div className="flex flex-col gap-1.5 pt-3">
-        <h4 className="font-mono font-bold text-[12px] text-neutral-800">
-          {isWater ? "Water Tax Details:" : "Property Tax Details:"}
-        </h4>
-        <div className="border-b border-dashed border-neutral-300 -mt-0.5 mb-1" />
+      {/* 8. Action Icons: Copy & Download (Only 15x15 px icons, no CTA or text) */}
+      <div className="border-t border-dashed border-neutral-300 mt-2.5 pt-2 flex items-center justify-end gap-2" data-html2canvas-ignore="true">
+        {/* Copy Due Bill as Image */}
+        <button
+          type="button"
+          onClick={handleCopyImage}
+          disabled={isCopyingImage}
+          className="p-1 text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer rounded hover:bg-neutral-100 active:scale-95 disabled:opacity-50 flex items-center justify-center"
+          title={imageCopied ? (cardLabels.copied || "Copied to clipboard!") : (cardLabels.copyBill || "Copy Due Bill as Image")}
+          aria-label="Copy Due Bill as Image"
+        >
+          {isCopyingImage ? (
+            <svg className="animate-spin text-neutral-600 w-[15px] h-[15px]" width="15" height="15" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+          ) : imageCopied ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[15px] h-[15px] text-emerald-600">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[15px] h-[15px]">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          )}
+        </button>
 
-        <div className="flex justify-between items-start text-[11.5px] font-mono">
-          <span className="text-neutral-600">Financial year</span>
-          <span className="text-neutral-900 font-medium text-right">{financialYear}</span>
-        </div>
-      </div>
-
-      {/* 7. Divider and Current Due Amount */}
-      <div className="border-b border-dashed border-neutral-300 mt-3 mb-2" />
-
-      <div className="flex justify-between items-center font-mono py-1">
-        <span className="text-[12px] text-neutral-700 font-normal">Current due amount</span>
-        <span className="text-[16px] sm:text-[17px] font-mono font-bold text-neutral-900">
-          ₹{dueAmount}
-        </span>
+        {/* Download Due Bill */}
+        <button
+          type="button"
+          onClick={handleDownloadBill}
+          disabled={isDownloading}
+          className="p-1 text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer rounded hover:bg-neutral-100 active:scale-95 disabled:opacity-50 flex items-center justify-center"
+          title={cardLabels.downloadBill || "Download Due Bill"}
+          aria-label="Download Due Bill"
+        >
+          {isDownloading ? (
+            <svg className="animate-spin text-neutral-600 w-[15px] h-[15px]" width="15" height="15" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[15px] h-[15px]">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -491,7 +969,12 @@ function now() {
 let msgId = 1;
 
 export default function App() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("open") === "true";
+    }
+    return false;
+  });
   const [citizen, setCitizen] = useState<CitizenUser | null>(null);
   const [conversationLanguage, setConversationLanguage] = useState<SupportedLanguage>("english");
 
@@ -1882,28 +2365,28 @@ export default function App() {
 
   return (
     <div className="fixed inset-0 pointer-events-none font-sans">
-      {/* Chat window container matching Frame 5249 */}
+      {/* Chat window container matching Frame 5249 with fully responsive viewport sizing */}
       {open && (
-        <div className="pointer-events-auto fixed bottom-[88px] right-6 w-[410px] max-w-[calc(100vw-32px)] h-[600px] max-h-[calc(100vh-110px)] flex flex-col rounded-[28px] overflow-hidden chat-window-rainbow animate-slide-up bg-white">
+        <div className="pointer-events-auto fixed chat-window-responsive flex flex-col rounded-[24px] sm:rounded-[28px] overflow-hidden chat-window-rainbow animate-slide-up bg-white z-40">
           {/* Header */}
-          <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-slate-200/80 bg-[#F9FAFB] select-none relative">
+          <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3.5 sm:pb-4 flex items-center justify-between border-b border-slate-200/80 bg-[#F9FAFB] select-none relative flex-shrink-0">
             {/* Left: Avatar + Titles */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 shadow-xs">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 shadow-xs">
                 <BotFace width={26} height={20.4} />
               </div>
               <div className="flex flex-col min-w-0">
-                <h1 className="text-[15px] font-semibold text-slate-800 leading-tight tracking-tight">
+                <h1 className="text-[14px] sm:text-[15px] font-semibold text-slate-800 leading-tight tracking-tight truncate">
                   mSeva Assistant
                 </h1>
-                <p className="text-[9.5px] uppercase font-medium tracking-wider text-neutral-400 mt-0.5 leading-tight">
+                <p className="text-[9px] sm:text-[9.5px] uppercase font-medium tracking-wider text-neutral-400 mt-0.5 leading-tight truncate">
                   Powered by AIRAWAT RESEARCH FOUNDATION
                 </p>
               </div>
             </div>
 
-            {/* Right: Actions (Refresh, Export, Clear) */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Right: Actions (Refresh, Export, Close) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleReset}
@@ -1930,6 +2413,19 @@ export default function App() {
                   <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
                   <path d="M12 12v9" />
                   <path d="m8 17 4 4 4-4" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="w-8 h-8 rounded-full border border-slate-200/90 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer bg-white shadow-xs"
+                title="Close chat"
+                aria-label="Close chat"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
@@ -2103,7 +2599,7 @@ export default function App() {
                         const isAuthVerified = !!citizen;
 
                         return (
-                          <div className="bg-white rounded-2xl border border-neutral-200/90 p-4 shadow-sm text-xs flex flex-col gap-3.5 max-w-[320px] animate-fade-in">
+                          <div className="bg-white rounded-2xl border border-neutral-200/90 p-4 shadow-sm text-xs flex flex-col gap-3.5 w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px] animate-fade-in">
                             <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
                               <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2">
@@ -2392,17 +2888,19 @@ export default function App() {
                           bill={msg.card.bill}
                           property={msg.card.property}
                           citizen={citizen}
+                          language={conversationLanguage}
                         />
                       )}
 
                       {/* Property Tax / Water Demand Bill Receipt Card (Step 6) */}
                       {msg.card?.type === "bill_dues" && (
-                        <div className="flex flex-col gap-2.5 max-w-[325px] w-full">
+                        <div className="flex flex-col gap-2.5 w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px]">
                           <BillReceiptCard
                             bill={msg.card.bill}
                             property={msg.card.property}
                             water={msg.card.water}
                             citizen={citizen}
+                            language={conversationLanguage}
                           />
 
                           {/* Payment Options Card directly inside the same response */}
@@ -2549,7 +3047,7 @@ export default function App() {
 
                       {/* Payment Success Card (Minimal & Simple Card) */}
                       {msg.card?.type === "payment_success" && msg.card.transaction && (
-                        <div className="bg-white rounded-2xl p-4 border border-neutral-200/90 text-xs flex flex-col gap-3 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                        <div className="bg-white rounded-2xl p-4 border border-neutral-200/90 text-xs flex flex-col gap-3 w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px] shadow-xs animate-fade-in select-text">
                           {/* 1. Header: Single-line title and status badge without checkicon or (SUCCESS) */}
                           <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
                             <span className="text-[13px] font-medium text-neutral-900 tracking-tight leading-none">
@@ -2614,7 +3112,7 @@ export default function App() {
 
                       {/* Payment Failed / Interrupted Card */}
                       {msg.card?.type === "payment_failed" && (
-                        <div className="bg-white rounded-2xl p-4 border border-rose-200/90 text-xs flex flex-col gap-2.5 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                        <div className="bg-white rounded-2xl p-4 border border-rose-200/90 text-xs flex flex-col gap-2.5 w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px] shadow-xs animate-fade-in select-text">
                           <div className="flex items-center justify-between pb-2 border-b border-rose-100">
                             <span className="text-[13px] font-medium text-rose-700 tracking-tight leading-none">
                               {cardLabels.paymentFailedTitle}
@@ -2658,7 +3156,7 @@ export default function App() {
 
                       {/* Empty Property Results Card */}
                       {msg.card?.type === "empty_state" && (
-                        <div className="bg-white rounded-2xl p-4 border border-amber-200/80 text-xs flex flex-col gap-2.5 max-w-[320px] w-full shadow-xs animate-fade-in select-text">
+                        <div className="bg-white rounded-2xl p-4 border border-amber-200/80 text-xs flex flex-col gap-2.5 w-full max-w-full sm:max-w-[360px] lg:max-w-[420px] 2xl:max-w-[460px] shadow-xs animate-fade-in select-text">
                           <div className="flex items-center gap-2 pb-2 border-b border-amber-100 text-amber-700 font-medium text-xs">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="11" cy="11" r="8" />
@@ -3034,7 +3532,7 @@ export default function App() {
           type="button"
           onClick={() => setOpen(false)}
           aria-label="Close chat"
-          className="pointer-events-auto fixed bottom-6 right-6 flex items-center justify-center transition-all duration-200 active:scale-95 hover:scale-105 bg-white rounded-full shadow-[0_6px_20px_rgba(0,0,0,0.14)] border border-slate-200 text-slate-700 hover:text-slate-900 w-12 h-12 cursor-pointer"
+          className="pointer-events-auto fixed bottom-6 right-6 hidden md:flex items-center justify-center transition-all duration-200 active:scale-95 hover:scale-105 bg-white rounded-full shadow-[0_6px_20px_rgba(0,0,0,0.14)] border border-slate-200 text-slate-700 hover:text-slate-900 w-12 h-12 cursor-pointer z-50"
         >
           <svg
             width="20"
@@ -3055,7 +3553,7 @@ export default function App() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open chat"
-          className="chat-fab pointer-events-auto fixed bottom-6 right-6 flex items-center justify-center transition-all duration-200 active:scale-95 hover:scale-105 cursor-pointer"
+          className="chat-fab pointer-events-auto fixed bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center justify-center transition-all duration-200 active:scale-95 hover:scale-105 cursor-pointer z-50"
           style={{
             width: 56,
             height: 56,

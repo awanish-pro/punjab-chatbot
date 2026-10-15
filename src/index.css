@@ -73,6 +73,102 @@
     0 4px 12px -2px rgba(15, 23, 42, 0.05);
 }
 
+/* ==========================================================================
+   Chatbot Window Responsive Layout System
+   Breakpoints:
+   - Mobile: <= 767px (360x800, 390x844)
+   - Tablet: 768px - 1023px (768x1024)
+   - Standard Laptops: 1024px - 1599px (1366x768, 1536x864)
+   - Medium Desktop: 1600px - 1919px
+   - Large Desktop Monitors: >= 1920px (1920x1080, 2560x1440, 4K)
+   ========================================================================== */
+
+.chat-window-responsive {
+  /* Mobile default (<= 767px): Near full-screen with 12px safe margins */
+  width: calc(100vw - 24px);
+  max-width: 440px;
+  height: clamp(520px, 88dvh, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
+  bottom: 12px;
+  right: 12px;
+  left: 12px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Tablet screens (768px - 1023px) */
+@media (min-width: 768px) {
+  .chat-window-responsive {
+    width: clamp(360px, 42vw, 400px);
+    max-width: calc(100vw - 48px);
+    height: clamp(540px, 74dvh, 700px);
+    max-height: calc(100dvh - 96px);
+    bottom: 84px;
+    right: 20px;
+    left: auto;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* Standard Laptops (1024px - 1599px, including 1366x768 & 1536x864) */
+@media (min-width: 1024px) {
+  .chat-window-responsive {
+    width: clamp(390px, 28vw, 440px);
+    max-width: 450px;
+    height: clamp(560px, 75dvh, 720px);
+    max-height: calc(100dvh - 104px);
+    bottom: 86px;
+    right: 24px;
+    left: auto;
+  }
+}
+
+/* Medium Desktop (1600px - 1919px) */
+@media (min-width: 1600px) {
+  .chat-window-responsive {
+    width: clamp(450px, 26vw, 490px);
+    max-width: 500px;
+    height: clamp(640px, 78dvh, 820px);
+    max-height: calc(100dvh - 110px);
+    bottom: 88px;
+    right: 28px;
+    left: auto;
+  }
+}
+
+/* Large Monitors (>= 1920px: 1920x1080, 2560x1440, 4K) */
+@media (min-width: 1920px) {
+  .chat-window-responsive {
+    width: clamp(500px, 24vw, 560px);
+    max-width: 560px;
+    height: clamp(720px, 80dvh, 920px);
+    max-height: calc(100dvh - 120px);
+    bottom: 92px;
+    right: 32px;
+    left: auto;
+  }
+}
+
+/* Viewport height safety: for short screens (e.g. netbooks or landscape mobile <= 640px height) */
+@media (max-height: 640px) {
+  .chat-window-responsive {
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    bottom: 8px !important;
+  }
+}
+
+/* Safe area support for notched phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media (max-width: 767px) {
+    .chat-window-responsive {
+      bottom: max(12px, env(safe-area-inset-bottom));
+      height: min(calc(100dvh - max(24px, env(safe-area-inset-bottom) + 12px)), 90dvh);
+    }
+  }
+}
+
 .animate-slide-up {
   animation: slide-up 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

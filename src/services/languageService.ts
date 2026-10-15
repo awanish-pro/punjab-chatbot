@@ -645,6 +645,11 @@ export class LanguageService {
           paymentFailedTitle: "भुगतान असफल रहा",
           paymentCancelledMsg: "भुगतान प्रक्रिया रद्द या बाधित हो गई। आप दोबारा प्रयास कर सकते हैं।",
           retryPayment: "पुनः भुगतान करें",
+          verified: "सत्यापित",
+          copyBill: "इमेज कॉपी करें",
+          copied: "इमेज कॉपी हो गई!",
+          downloadBill: "डाउनलोड",
+          copyId: "आईडी कॉपी करें",
         };
       case "hinglish":
         return {
@@ -724,6 +729,11 @@ export class LanguageService {
           paymentFailedTitle: "Payment Failed",
           paymentCancelledMsg: "Payment transaction cancel ya interrupt ho gaya. Aap dobara try kar sakte hain.",
           retryPayment: "Retry Payment",
+          verified: "Verified",
+          copyBill: "Copy Image",
+          copied: "Image Copied!",
+          downloadBill: "Download",
+          copyId: "Copy ID",
         };
       case "punjabi":
         return {
@@ -803,6 +813,11 @@ export class LanguageService {
           paymentFailedTitle: "ਭੁਗਤਾਨ ਅਸਫਲ ਰਿਹਾ",
           paymentCancelledMsg: "ਭੁਗਤਾਨ ਰੱਦ ਜਾਂ ਰੁਕ ਗਿਆ ਸੀ। ਤੁਸੀਂ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰ ਸਕਦੇ ਹੋ।",
           retryPayment: "ਦੁਬਾਰਾ ਭੁਗਤਾਨ ਕਰੋ",
+          verified: "ਤਸਦੀਕ ਸ਼ੁਦਾ",
+          copyBill: "ਤਸਵੀਰ ਕਾਪੀ ਕਰੋ",
+          copied: "ਤਸਵੀਰ ਕਾਪੀ ਹੋ ਗਈ!",
+          downloadBill: "ਡਾਊਨਲੋਡ ਕਰੋ",
+          copyId: "ID ਕਾਪੀ ਕਰੋ",
         };
       case "english":
       default:
@@ -883,6 +898,11 @@ export class LanguageService {
           paymentFailedTitle: "Payment Unsuccessful",
           paymentCancelledMsg: "The payment transaction was cancelled, interrupted, or declined by the gateway. You can retry with the same or another gateway.",
           retryPayment: "Retry Payment",
+          verified: "Verified",
+          copyBill: "Copy Image",
+          copied: "Image Copied!",
+          downloadBill: "Download",
+          copyId: "Copy ID",
         };
     }
   }
